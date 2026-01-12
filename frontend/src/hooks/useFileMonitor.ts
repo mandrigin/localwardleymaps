@@ -6,6 +6,7 @@ export interface FileMonitorState {
     lastModified: Date | null;
     error: string | null;
     isSupported: boolean;
+    isRestoring: boolean;
 }
 
 export interface FileMonitorActions {
@@ -19,16 +20,79 @@ export interface UseFileMonitorResult {
 }
 
 const POLL_INTERVAL_MS = 500;
+const DB_NAME = 'FileMonitorDB';
+const STORE_NAME = 'fileHandles';
+const HANDLE_KEY = 'lastMonitoredFile';
+
+async function openDB(): Promise<IDBDatabase> {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, 1);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+        request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME);
+            }
+        };
+    });
+}
+
+async function saveFileHandle(handle: FileSystemFileHandle): Promise<void> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.put(handle, HANDLE_KEY);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve();
+        tx.oncomplete = () => db.close();
+    });
+}
+
+async function loadFileHandle(): Promise<FileSystemFileHandle | null> {
+    try {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, 'readonly');
+            const store = tx.objectStore(STORE_NAME);
+            const request = store.get(HANDLE_KEY);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result || null);
+            tx.oncomplete = () => db.close();
+        });
+    } catch {
+        return null;
+    }
+}
+
+async function clearFileHandle(): Promise<void> {
+    try {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            const store = tx.objectStore(STORE_NAME);
+            const request = store.delete(HANDLE_KEY);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve();
+            tx.oncomplete = () => db.close();
+        });
+    } catch {
+        // Ignore errors when clearing
+    }
+}
 
 export const useFileMonitor = (onContentChange: (content: string) => void): UseFileMonitorResult => {
     const [isMonitoring, setIsMonitoring] = useState(false);
     const [fileName, setFileName] = useState<string | null>(null);
     const [lastModified, setLastModified] = useState<Date | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [isRestoring, setIsRestoring] = useState(false);
 
     const fileHandleRef = useRef<FileSystemFileHandle | null>(null);
     const lastContentRef = useRef<string>('');
     const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const hasAttemptedRestore = useRef(false);
 
     const isSupported = typeof window !== 'undefined' && 'showOpenFilePicker' in window;
 
@@ -93,6 +157,11 @@ export const useFileMonitor = (onContentChange: (content: string) => void): UseF
             setFileName(handle.name);
             setError(null);
 
+            // Persist handle to IndexedDB for restore on refresh
+            saveFileHandle(handle).catch(() => {
+                // Non-critical: persistence failed but monitoring works
+            });
+
             // Read initial content
             const {content, modified} = await readFileContent(handle);
             lastContentRef.current = content;
@@ -119,6 +188,8 @@ export const useFileMonitor = (onContentChange: (content: string) => void): UseF
         setFileName(null);
         setLastModified(null);
         setError(null);
+        // Clear persisted handle
+        clearFileHandle();
     }, [stopPolling]);
 
     // Cleanup on unmount
@@ -128,6 +199,51 @@ export const useFileMonitor = (onContentChange: (content: string) => void): UseF
         };
     }, [stopPolling]);
 
+    // Attempt to restore previously monitored file on mount
+    useEffect(() => {
+        if (!isSupported || hasAttemptedRestore.current) return;
+        hasAttemptedRestore.current = true;
+
+        const restoreFile = async () => {
+            setIsRestoring(true);
+            try {
+                const handle = await loadFileHandle();
+                if (!handle) {
+                    setIsRestoring(false);
+                    return;
+                }
+
+                // Request permission - required after page reload
+                const permission = await handle.requestPermission({mode: 'read'});
+                if (permission !== 'granted') {
+                    // Permission denied - clear stored handle and let user pick again
+                    await clearFileHandle();
+                    setIsRestoring(false);
+                    return;
+                }
+
+                // Permission granted - resume monitoring
+                fileHandleRef.current = handle;
+                setFileName(handle.name);
+
+                const {content, modified} = await readFileContent(handle);
+                lastContentRef.current = content;
+                setLastModified(modified);
+                onContentChange(content);
+
+                setIsMonitoring(true);
+                startPolling();
+            } catch {
+                // Restore failed - clear stored handle
+                await clearFileHandle();
+            } finally {
+                setIsRestoring(false);
+            }
+        };
+
+        restoreFile();
+    }, [isSupported, readFileContent, onContentChange, startPolling]);
+
     return {
         state: {
             isMonitoring,
@@ -135,6 +251,7 @@ export const useFileMonitor = (onContentChange: (content: string) => void): UseF
             lastModified,
             error,
             isSupported,
+            isRestoring,
         },
         actions: {
             selectFile,

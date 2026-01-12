@@ -2,7 +2,7 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import StopIcon from '@mui/icons-material/Stop';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import WarningIcon from '@mui/icons-material/Warning';
-import {Box, Button, Typography} from '@mui/material';
+import {Box, Button, CircularProgress, Typography} from '@mui/material';
 import React from 'react';
 import {FileMonitorActions, FileMonitorState} from '../../hooks/useFileMonitor';
 
@@ -14,7 +14,7 @@ export interface FileMonitorProps {
 }
 
 export const FileMonitor: React.FC<FileMonitorProps> = ({state, actions, isLightTheme, collapsed = false}) => {
-    const {isMonitoring, fileName, lastModified, error, isSupported} = state;
+    const {isMonitoring, fileName, lastModified, error, isSupported, isRestoring} = state;
     const {selectFile, stopMonitoring} = actions;
 
     const formatTime = (date: Date | null): string => {
@@ -46,6 +46,31 @@ export const FileMonitor: React.FC<FileMonitorProps> = ({state, actions, isLight
                 <Typography variant="body2" textAlign="center">
                     File monitoring requires the File System Access API, which is not supported in this browser. Please use Chrome, Edge, or another
                     Chromium-based browser.
+                </Typography>
+            </Box>
+        );
+    }
+
+    // Show loading state while restoring previous file
+    if (isRestoring) {
+        return (
+            <Box
+                sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100%',
+                    padding: 4,
+                    backgroundColor,
+                    color: textColor,
+                }}>
+                <CircularProgress size={48} sx={{mb: 2}} />
+                <Typography variant="h6" gutterBottom>
+                    Restoring File
+                </Typography>
+                <Typography variant="body2" textAlign="center">
+                    Reconnecting to previously monitored file...
                 </Typography>
             </Box>
         );
