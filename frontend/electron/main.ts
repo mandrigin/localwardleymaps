@@ -1,12 +1,36 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs';
 import { spawn, ChildProcess } from 'child_process';
 
 let mainWindow: BrowserWindow | null = null;
 let nextProcess: ChildProcess | null = null;
+let cliFilePath: string | null = null;
 
 const isDev = process.env.NODE_ENV === 'development';
 const PORT = process.env.PORT || 3000;
+
+// Parse CLI arguments for file path
+function parseCliFilePath(): string | null {
+  // Skip electron binary and script path
+  // In dev: electron . /path/to/file.owm
+  // In prod: ./App /path/to/file.owm
+  const args = process.argv.slice(isDev ? 2 : 1);
+
+  for (const arg of args) {
+    // Skip flags
+    if (arg.startsWith('-')) continue;
+    // Skip the current directory arg in dev mode
+    if (arg === '.') continue;
+    // Check if it looks like a file path and exists
+    if (fs.existsSync(arg)) {
+      return path.resolve(arg);
+    }
+  }
+  return null;
+}
+
+cliFilePath = parseCliFilePath();
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -116,4 +140,36 @@ app.on('before-quit', () => {
 // IPC handlers for file system access
 ipcMain.handle('get-app-path', () => {
   return app.getPath('userData');
+});
+
+ipcMain.handle('get-cli-file-path', () => {
+  return cliFilePath;
+});
+
+ipcMain.handle('read-file', async (_event, filePath: string) => {
+  try {
+    const content = await fs.promises.readFile(filePath, 'utf-8');
+    const stats = await fs.promises.stat(filePath);
+    return { content, lastModified: stats.mtimeMs };
+  } catch (err) {
+    throw new Error(`Failed to read file: ${err instanceof Error ? err.message : String(err)}`);
+  }
+});
+
+ipcMain.handle('write-file', async (_event, filePath: string, content: string) => {
+  try {
+    await fs.promises.writeFile(filePath, content, 'utf-8');
+    return true;
+  } catch (err) {
+    throw new Error(`Failed to write file: ${err instanceof Error ? err.message : String(err)}`);
+  }
+});
+
+ipcMain.handle('get-file-stats', async (_event, filePath: string) => {
+  try {
+    const stats = await fs.promises.stat(filePath);
+    return { lastModified: stats.mtimeMs };
+  } catch (err) {
+    throw new Error(`Failed to get file stats: ${err instanceof Error ? err.message : String(err)}`);
+  }
 });

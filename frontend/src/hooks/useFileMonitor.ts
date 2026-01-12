@@ -3,12 +3,14 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 export interface FileMonitorState {
     isMonitoring: boolean;
     fileName: string | null;
+    filePath: string | null;
     lastModified: Date | null;
     error: string | null;
     isSupported: boolean;
     isRestoring: boolean;
     isSaving: boolean;
     lastSaved: Date | null;
+    isElectronNative: boolean;
 }
 
 export interface FileMonitorActions {
@@ -88,18 +90,23 @@ async function clearFileHandle(): Promise<void> {
 export const useFileMonitor = (onContentChange: (content: string) => void): UseFileMonitorResult => {
     const [isMonitoring, setIsMonitoring] = useState(false);
     const [fileName, setFileName] = useState<string | null>(null);
+    const [filePath, setFilePath] = useState<string | null>(null);
     const [lastModified, setLastModified] = useState<Date | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isRestoring, setIsRestoring] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
+    const [isElectronNative, setIsElectronNative] = useState(false);
 
     const fileHandleRef = useRef<FileSystemFileHandle | null>(null);
+    const nativeFilePathRef = useRef<string | null>(null);
     const lastContentRef = useRef<string>('');
     const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const hasAttemptedRestore = useRef(false);
+    const hasAttemptedCliFile = useRef(false);
 
-    const isSupported = typeof window !== 'undefined' && 'showOpenFilePicker' in window;
+    const isElectron = typeof window !== 'undefined' && !!window.electronAPI?.isElectron;
+    const isSupported = typeof window !== 'undefined' && ('showOpenFilePicker' in window || isElectron);
 
     const readFileContent = useCallback(async (handle: FileSystemFileHandle): Promise<{content: string; modified: Date}> => {
         const file = await handle.getFile();
@@ -108,6 +115,25 @@ export const useFileMonitor = (onContentChange: (content: string) => void): UseF
     }, []);
 
     const pollFile = useCallback(async () => {
+        // Handle Electron native file path
+        if (nativeFilePathRef.current && window.electronAPI) {
+            try {
+                const {content, lastModified: mtime} = await window.electronAPI.readFile(nativeFilePathRef.current);
+
+                if (content !== lastContentRef.current) {
+                    lastContentRef.current = content;
+                    setLastModified(new Date(mtime));
+                    onContentChange(content);
+                }
+                setError(null);
+            } catch (err) {
+                const message = err instanceof Error ? err.message : 'Failed to read file';
+                setError(message);
+            }
+            return;
+        }
+
+        // Handle File System Access API
         if (!fileHandleRef.current) return;
 
         try {
@@ -188,17 +214,44 @@ export const useFileMonitor = (onContentChange: (content: string) => void): UseF
     const stopMonitoring = useCallback(() => {
         stopPolling();
         fileHandleRef.current = null;
+        nativeFilePathRef.current = null;
         lastContentRef.current = '';
         setIsMonitoring(false);
         setFileName(null);
+        setFilePath(null);
         setLastModified(null);
         setError(null);
         setLastSaved(null);
+        setIsElectronNative(false);
         // Clear persisted handle
         clearFileHandle();
     }, [stopPolling]);
 
     const saveToFile = useCallback(async (content: string): Promise<boolean> => {
+        // Handle Electron native file path
+        if (nativeFilePathRef.current && window.electronAPI) {
+            setIsSaving(true);
+            setError(null);
+            stopPolling();
+
+            try {
+                await window.electronAPI.writeFile(nativeFilePathRef.current, content);
+                lastContentRef.current = content;
+                setLastSaved(new Date());
+                setError(null);
+                startPolling();
+                setIsSaving(false);
+                return true;
+            } catch (err) {
+                const message = err instanceof Error ? err.message : 'Failed to save file';
+                setError(message);
+                startPolling();
+                setIsSaving(false);
+                return false;
+            }
+        }
+
+        // Handle File System Access API
         if (!fileHandleRef.current) {
             setError('No file selected');
             return false;
@@ -295,16 +348,55 @@ export const useFileMonitor = (onContentChange: (content: string) => void): UseF
         restoreFile();
     }, [isSupported, readFileContent, onContentChange, startPolling]);
 
+    // Check for CLI file path on mount (Electron only)
+    useEffect(() => {
+        if (!isElectron || hasAttemptedCliFile.current) return;
+        hasAttemptedCliFile.current = true;
+
+        const loadCliFile = async () => {
+            try {
+                const cliPath = await window.electronAPI?.getCliFilePath();
+                if (!cliPath) return;
+
+                setIsRestoring(true);
+
+                // Read initial content via IPC
+                const {content, lastModified: mtime} = await window.electronAPI!.readFile(cliPath);
+
+                nativeFilePathRef.current = cliPath;
+                const name = cliPath.split(/[/\\]/).pop() || cliPath;
+                setFileName(name);
+                setFilePath(cliPath);
+                setIsElectronNative(true);
+                lastContentRef.current = content;
+                setLastModified(new Date(mtime));
+                onContentChange(content);
+
+                setIsMonitoring(true);
+                startPolling();
+            } catch (err) {
+                const message = err instanceof Error ? err.message : 'Failed to load CLI file';
+                setError(message);
+            } finally {
+                setIsRestoring(false);
+            }
+        };
+
+        loadCliFile();
+    }, [isElectron, onContentChange, startPolling]);
+
     return {
         state: {
             isMonitoring,
             fileName,
+            filePath,
             lastModified,
             error,
             isSupported,
             isRestoring,
             isSaving,
             lastSaved,
+            isElectronNative,
         },
         actions: {
             selectFile,
