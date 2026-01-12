@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Fullscreen Mode by Default** - The app now starts in fullscreen/map-only view with the navigation panel hidden. The map takes all available screen space. A minimal status bar at the top shows the file name, last update time, and control buttons. (`64ce1be`, `a23cafa`)
 
+- **Electron Desktop App** - The app can now run as a standalone desktop application using Electron. Benefits include native file system access without browser permission prompts and cross-platform distribution (Windows, macOS, Linux). Run with `yarn electron:dev` for development or `yarn electron:build` for distributable packages. (`ac0cd04`)
+
 ### Changed
 
 - **UI Layout** - Replaced the ACE Editor left panel with a compact status bar. When no file is selected, shows a "Select File" button. When monitoring, shows file path, last modified time, Save button, and Stop button.
