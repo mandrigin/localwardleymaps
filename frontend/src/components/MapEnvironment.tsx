@@ -249,6 +249,17 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
 
     function downloadMap() {
         if (mapRef.current === null) return;
+
+        // Hide UI overlays during screenshot capture
+        const toolbar = document.getElementById('map-canvas-toolbar');
+        const speedDial = document.getElementById('canvas-speed-dial');
+        if (toolbar) {
+            toolbar.style.display = 'none';
+        }
+        if (speedDial) {
+            speedDial.style.display = 'none';
+        }
+
         const svgMapText = mapRef.current.getElementsByTagName('svg')[0].outerHTML;
         const tempElement = document.createElement('div');
         tempElement.innerHTML = svgMapText;
@@ -264,9 +275,17 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
                 link.click();
                 tempElement.remove();
             })
-
             .catch(_ => {
                 tempElement.remove();
+            })
+            .finally(() => {
+                // Restore UI overlay visibility
+                if (toolbar) {
+                    toolbar.style.display = '';
+                }
+                if (speedDial) {
+                    speedDial.style.display = '';
+                }
             });
     }
 
