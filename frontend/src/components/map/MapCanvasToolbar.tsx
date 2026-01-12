@@ -1,3 +1,4 @@
+import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import PanIcon from '@mui/icons-material/ControlCamera';
 import FitScreenIcon from '@mui/icons-material/FitScreen';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
@@ -6,7 +7,7 @@ import HandIcon from '@mui/icons-material/PanToolAlt';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 
-import {ButtonGroup, IconButton} from '@mui/material';
+import {ButtonGroup, IconButton, Tooltip} from '@mui/material';
 import React, {MouseEvent} from 'react';
 import {TOOL_NONE, TOOL_PAN, TOOL_ZOOM_IN, TOOL_ZOOM_OUT} from 'react-svg-pan-zoom';
 import {useI18n} from '../../hooks/useI18n';
@@ -17,9 +18,10 @@ interface MapCanvasToolbarProps {
     tool: string;
     handleChangeTool: (event: MouseEvent<HTMLButtonElement>, newTool: string) => void;
     _fitToViewer: () => void;
+    onScreenshot?: () => void;
 }
 
-const MapCanvasToolbar: React.FC<MapCanvasToolbarProps> = ({shouldHideNav, hideNav, tool, handleChangeTool, _fitToViewer}) => {
+const MapCanvasToolbar: React.FC<MapCanvasToolbarProps> = ({shouldHideNav, hideNav, tool, handleChangeTool, _fitToViewer, onScreenshot}) => {
     const SelectedIconButtonStyle = {color: '#90caf9'};
     const IconButtonStyle = {color: 'rgba(0, 0, 0, 0.54)'};
     const {t} = useI18n();
@@ -63,6 +65,17 @@ const MapCanvasToolbar: React.FC<MapCanvasToolbarProps> = ({shouldHideNav, hideN
                 aria-label={hideNav ? t('map.toolbar.exitFullscreen', 'Exit Fullscreen') : t('map.toolbar.fullscreen', 'Fullscreen')}>
                 {hideNav ? <FullscreenExitIcon sx={IconButtonStyle} /> : <FullscreenIcon sx={IconButtonStyle} />}
             </IconButton>
+            {onScreenshot && (
+                <Tooltip title={t('map.toolbar.screenshot', 'Copy map to clipboard')}>
+                    <IconButton
+                        id="wm-map-screenshot"
+                        onClick={onScreenshot}
+                        aria-label={t('map.toolbar.screenshot', 'Copy map to clipboard')}
+                        sx={IconButtonStyle}>
+                        <CameraAltIcon />
+                    </IconButton>
+                </Tooltip>
+            )}
         </ButtonGroup>
     );
 };
