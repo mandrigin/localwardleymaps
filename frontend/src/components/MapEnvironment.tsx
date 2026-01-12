@@ -1,5 +1,7 @@
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import HelpCenterIcon from '@mui/icons-material/HelpCenter';
-import {Backdrop, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle} from '@mui/material';
+import StopIcon from '@mui/icons-material/Stop';
+import {Backdrop, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Typography} from '@mui/material';
 import html2canvas from 'html2canvas';
 import Router from 'next/router';
 import React, {FunctionComponent, useEffect, useRef, useState} from 'react';
@@ -129,7 +131,7 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
     const [saveOutstanding, setSaveOutstanding] = useState(false);
     const [errorLine, setErrorLine] = useState<number[]>([]);
     const [showLineNumbers, setShowLineNumbers] = useState(false);
-    const [mapOnlyView, setMapOnlyView] = useState(false);
+    const [mapOnlyView, setMapOnlyView] = useState(true);
     const [currentIteration, setCurrentIteration] = useState(-1);
     const [actionInProgress, setActionInProgress] = useState(false);
     const [hideNav, setHideNav] = useState(false);
@@ -517,6 +519,69 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
                 isLightTheme={isLightTheme}
             />
 
+            {/* File monitoring status bar */}
+            <Box
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '4px 12px',
+                    backgroundColor: isLightTheme ? '#e3f2fd' : '#1a237e',
+                    borderBottom: `1px solid ${isLightTheme ? '#90caf9' : '#3949ab'}`,
+                    flexShrink: 0,
+                    minHeight: 32,
+                }}>
+                {fileMonitor.state.isMonitoring ? (
+                    <>
+                        <Box sx={{display: 'flex', alignItems: 'center', gap: 2, flex: 1, minWidth: 0}}>
+                            <Typography
+                                variant="body2"
+                                sx={{
+                                    color: isLightTheme ? '#1565c0' : '#90caf9',
+                                    fontFamily: 'monospace',
+                                    fontSize: '0.8rem',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                }}>
+                                {fileMonitor.state.fileName}
+                            </Typography>
+                            {fileMonitor.state.lastModified && (
+                                <Typography
+                                    variant="caption"
+                                    sx={{
+                                        color: isLightTheme ? '#1976d2' : '#64b5f6',
+                                        flexShrink: 0,
+                                    }}>
+                                    Updated: {fileMonitor.state.lastModified.toLocaleTimeString()}
+                                </Typography>
+                            )}
+                        </Box>
+                        <Button
+                            size="small"
+                            variant="text"
+                            color="error"
+                            startIcon={<StopIcon />}
+                            onClick={fileMonitor.actions.stopMonitoring}
+                            sx={{textTransform: 'none', flexShrink: 0, minWidth: 'auto', padding: '2px 8px'}}>
+                            Stop
+                        </Button>
+                    </>
+                ) : (
+                    <Button
+                        size="small"
+                        variant="text"
+                        startIcon={<FolderOpenIcon />}
+                        onClick={fileMonitor.actions.selectFile}
+                        sx={{
+                            textTransform: 'none',
+                            color: isLightTheme ? '#1565c0' : '#90caf9',
+                        }}>
+                        Select File to Monitor
+                    </Button>
+                )}
+            </Box>
+
             <Box
                 id="top-nav-wrapper"
                 sx={{
@@ -565,6 +630,7 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
                                 state={fileMonitor.state}
                                 actions={fileMonitor.actions}
                                 isLightTheme={isLightTheme}
+                                collapsed={fileMonitor.state.isMonitoring}
                             />
                         }
                         rightPanel={

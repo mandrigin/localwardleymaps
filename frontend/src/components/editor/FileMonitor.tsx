@@ -10,9 +10,10 @@ export interface FileMonitorProps {
     state: FileMonitorState;
     actions: FileMonitorActions;
     isLightTheme: boolean;
+    collapsed?: boolean;
 }
 
-export const FileMonitor: React.FC<FileMonitorProps> = ({state, actions, isLightTheme}) => {
+export const FileMonitor: React.FC<FileMonitorProps> = ({state, actions, isLightTheme, collapsed = false}) => {
     const {isMonitoring, fileName, lastModified, error, isSupported} = state;
     const {selectFile, stopMonitoring} = actions;
 
@@ -46,6 +47,32 @@ export const FileMonitor: React.FC<FileMonitorProps> = ({state, actions, isLight
                     File monitoring requires the File System Access API, which is not supported in this browser. Please use Chrome, Edge, or another
                     Chromium-based browser.
                 </Typography>
+            </Box>
+        );
+    }
+
+    // Collapsed mode: minimal UI when monitoring is active
+    if (collapsed && isMonitoring) {
+        return (
+            <Box
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100%',
+                    padding: 2,
+                    backgroundColor,
+                    color: textColor,
+                }}>
+                <Button
+                    variant="outlined"
+                    color="error"
+                    startIcon={<StopIcon />}
+                    onClick={stopMonitoring}
+                    size="small"
+                    sx={{textTransform: 'none'}}>
+                    Stop Monitoring
+                </Button>
             </Box>
         );
     }
