@@ -186,6 +186,7 @@
     },
     "export": {
         "exportAs": "Export as",
+        "copyToClipboard": "Copy Map to Clipboard",
         "png": "PNG Image",
         "svg": "SVG Image",
         "pdf": "PDF Document",
