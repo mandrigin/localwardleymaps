@@ -13,12 +13,13 @@ import {LoadMap} from '../repository/LoadMap';
 import {MapIteration, OwnApiWardleyMap} from '../repository/OwnApiWardleyMap';
 import {SaveMap} from '../repository/SaveMap';
 import {MapAnnotationsPosition, MapSize} from '../types/base';
+import {useFileMonitor} from '../hooks/useFileMonitor';
 import {useFeatureSwitches} from './FeatureSwitchesContext';
 import {ModKeyPressedProvider} from './KeyPressContext';
 import QuickAdd from './actions/QuickAdd';
 import {ResizableSplitPane} from './common/ResizableSplitPane';
 import {Breadcrumb} from './editor/Breadcrumb';
-import Editor from './editor/Editor';
+import {FileMonitor} from './editor/FileMonitor';
 import {NewMapIterations} from './editor/MapIterations';
 import {MapView} from './map/MapView';
 import {LeftNavigation} from './page/LeftNavigation';
@@ -132,6 +133,12 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
     const [currentIteration, setCurrentIteration] = useState(-1);
     const [actionInProgress, setActionInProgress] = useState(false);
     const [hideNav, setHideNav] = useState(false);
+
+    // File monitoring hook - connects file changes to map text updates
+    const fileMonitor = useFileMonitor((content: string) => {
+        legacyState.mutateMapText(content);
+        setSaveOutstanding(true);
+    });
 
     // Wrapper function for setting map text that also handles iterations and save state
     const mutateMapText = (newText: string) => {
@@ -554,16 +561,10 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
                         storageKey="wardleyMapEditor_splitPaneWidth"
                         isDarkTheme={!isLightTheme}
                         leftPanel={
-                            <Editor
-                                wardleyMap={unifiedMapState.getUnifiedMap()}
-                                hideNav={hideNav}
+                            <FileMonitor
+                                state={fileMonitor.state}
+                                actions={fileMonitor.actions}
                                 isLightTheme={isLightTheme}
-                                highlightLine={legacyState.highlightedLine}
-                                mapText={legacyState.mapText}
-                                invalid={invalid}
-                                mutateMapText={mutateMapText}
-                                errorLine={errorLine}
-                                showLineNumbers={showLineNumbers}
                             />
                         }
                         rightPanel={
