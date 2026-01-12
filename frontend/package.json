@@ -1,10 +1,16 @@
 {
     "name": "online-wardley-maps",
     "version": "1.117.0",
-    "main": "index.js",
+    "main": "electron/main.js",
+    "author": "Wardley Maps Team",
+    "description": "Online Wardley Maps - A tool for creating and sharing Wardley Maps",
     "license": "MIT",
     "devDependencies": {
         "@babel/core": "^7.24.3",
+        "concurrently": "^9.1.0",
+        "electron": "^33.2.0",
+        "electron-builder": "^25.1.8",
+        "wait-on": "^8.0.1",
         "@babel/preset-env": "^7.24.3",
         "@babel/preset-react": "^7.24.1",
         "@babel/preset-typescript": "^7.24.1",
@@ -49,8 +55,35 @@
         "jest": true
     },
     "build": {
+        "appId": "com.wardleymaps.app",
+        "productName": "Wardley Maps",
         "directories": {
-            "output": "release/"
+            "output": "dist-electron",
+            "buildResources": "build"
+        },
+        "files": [
+            "electron/**/*.js",
+            ".next/**/*",
+            "public/**/*",
+            "node_modules/**/*",
+            "package.json"
+        ],
+        "extraResources": [
+            {
+                "from": ".next",
+                "to": "app/.next"
+            }
+        ],
+        "mac": {
+            "category": "public.app-category.productivity",
+            "target": ["dmg", "zip"]
+        },
+        "win": {
+            "target": ["nsis", "portable"]
+        },
+        "linux": {
+            "target": ["AppImage", "deb"],
+            "category": "Office"
         }
     },
     "resolutions": {
@@ -90,6 +123,10 @@
         "dev": "next dev",
         "build": "next build",
         "start": "next start",
+        "electron:dev": "concurrently -k \"npm run dev\" \"wait-on http://localhost:3000 && NODE_ENV=development electron .\"",
+        "electron:build": "npm run build && npm run electron:compile && electron-builder",
+        "electron:compile": "tsc -p electron/tsconfig.json",
+        "electron:pack": "npm run build && npm run electron:compile && electron-builder --dir",
         "lint": "node scripts/lint-with-progress.js --fix",
         "lint:check": "node scripts/lint-with-progress.js",
         "lint:simple": "eslint . --fix",

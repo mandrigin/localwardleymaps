@@ -32,3 +32,13 @@ amplifytools.xcconfig
 .secret-*
 **.sample
 #amplify-do-not-edit-end
+
+# Electron
+dist-electron/
+electron/*.js
+electron/*.js.map
+*.dmg
+*.AppImage
+*.deb
+*.rpm
+*.snap
