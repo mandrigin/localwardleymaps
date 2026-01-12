@@ -1,4 +1,5 @@
-import React, {MouseEvent, useEffect, useMemo, useRef, useState} from 'react';
+import html2canvas from 'html2canvas';
+import React, {MouseEvent, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {ReactSVGPanZoom, TOOL_NONE, UncontrolledReactSVGPanZoom} from 'react-svg-pan-zoom';
 import {EvolutionStages, MapCanvasDimensions, MapDimensions, Offsets} from '../../constants/defaults';
 import {MapElements} from '../../processing/MapElements';
@@ -172,6 +173,61 @@ function UnifiedMapCanvas(props: ModernUnifiedMapCanvasProps) {
             setMapElementsClicked([]);
         } else setMapElementsClicked(s);
     };
+
+    const handleScreenshot = useCallback(async () => {
+        const mapCanvas = document.getElementById('map-canvas');
+        if (!mapCanvas) {
+            console.error('Map canvas not found');
+            return;
+        }
+
+        try {
+            // Use html2canvas to capture the map
+            const canvas = await html2canvas(mapCanvas, {
+                backgroundColor: '#ffffff',
+                scale: 2, // Higher resolution
+                useCORS: true,
+                logging: false,
+            });
+
+            // Convert canvas to blob
+            const blob = await new Promise<Blob | null>(resolve => {
+                canvas.toBlob(resolve, 'image/png');
+            });
+
+            if (!blob) {
+                console.error('Failed to create blob from canvas');
+                return;
+            }
+
+            // Try to copy to clipboard
+            // For Electron compatibility, we need to handle this carefully
+            // The ClipboardItem API doesn't work in all Electron versions
+            if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+                try {
+                    const clipboardItem = new ClipboardItem({'image/png': blob});
+                    await navigator.clipboard.write([clipboardItem]);
+                    console.log('Screenshot copied to clipboard');
+                    return;
+                } catch (clipboardError) {
+                    console.warn('ClipboardItem API failed, trying fallback:', clipboardError);
+                }
+            }
+
+            // Fallback: Download the image instead
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `wardley-map-${Date.now()}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            console.log('Screenshot downloaded as file (clipboard not available)');
+        } catch (error) {
+            console.error('Screenshot failed:', error);
+        }
+    }, []);
 
     useEffect(() => {
         if (Viewer.current) {
@@ -353,6 +409,7 @@ function UnifiedMapCanvas(props: ModernUnifiedMapCanvasProps) {
                                 }
                             }
                         }}
+                        onScreenshot={handleScreenshot}
                     />
                 </div>
             )}
