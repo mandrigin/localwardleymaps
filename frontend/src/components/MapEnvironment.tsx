@@ -1,5 +1,6 @@
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import HelpCenterIcon from '@mui/icons-material/HelpCenter';
+import SaveIcon from '@mui/icons-material/Save';
 import StopIcon from '@mui/icons-material/Stop';
 import {Backdrop, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Typography} from '@mui/material';
 import html2canvas from 'html2canvas';
@@ -557,15 +558,40 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
                                 </Typography>
                             )}
                         </Box>
-                        <Button
-                            size="small"
-                            variant="text"
-                            color="error"
-                            startIcon={<StopIcon />}
-                            onClick={fileMonitor.actions.stopMonitoring}
-                            sx={{textTransform: 'none', flexShrink: 0, minWidth: 'auto', padding: '2px 8px'}}>
-                            Stop
-                        </Button>
+                        <Box sx={{display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0}}>
+                            {fileMonitor.state.lastSaved && (
+                                <Typography
+                                    variant="caption"
+                                    sx={{
+                                        color: isLightTheme ? '#2e7d32' : '#81c784',
+                                    }}>
+                                    Saved {fileMonitor.state.lastSaved.toLocaleTimeString()}
+                                </Typography>
+                            )}
+                            <Button
+                                size="small"
+                                variant="text"
+                                startIcon={<SaveIcon />}
+                                onClick={() => fileMonitor.actions.saveToFile(legacyState.mapText)}
+                                disabled={fileMonitor.state.isSaving}
+                                sx={{
+                                    textTransform: 'none',
+                                    minWidth: 'auto',
+                                    padding: '2px 8px',
+                                    color: isLightTheme ? '#1565c0' : '#90caf9',
+                                }}>
+                                {fileMonitor.state.isSaving ? 'Saving...' : 'Save'}
+                            </Button>
+                            <Button
+                                size="small"
+                                variant="text"
+                                color="error"
+                                startIcon={<StopIcon />}
+                                onClick={fileMonitor.actions.stopMonitoring}
+                                sx={{textTransform: 'none', minWidth: 'auto', padding: '2px 8px'}}>
+                                Stop
+                            </Button>
+                        </Box>
                     </>
                 ) : (
                     <Button

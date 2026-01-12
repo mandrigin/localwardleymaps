@@ -7,11 +7,14 @@ export interface FileMonitorState {
     error: string | null;
     isSupported: boolean;
     isRestoring: boolean;
+    isSaving: boolean;
+    lastSaved: Date | null;
 }
 
 export interface FileMonitorActions {
     selectFile: () => Promise<void>;
     stopMonitoring: () => void;
+    saveToFile: (content: string) => Promise<boolean>;
 }
 
 export interface UseFileMonitorResult {
@@ -88,6 +91,8 @@ export const useFileMonitor = (onContentChange: (content: string) => void): UseF
     const [lastModified, setLastModified] = useState<Date | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isRestoring, setIsRestoring] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
     const fileHandleRef = useRef<FileSystemFileHandle | null>(null);
     const lastContentRef = useRef<string>('');
@@ -188,9 +193,55 @@ export const useFileMonitor = (onContentChange: (content: string) => void): UseF
         setFileName(null);
         setLastModified(null);
         setError(null);
+        setLastSaved(null);
         // Clear persisted handle
         clearFileHandle();
     }, [stopPolling]);
+
+    const saveToFile = useCallback(async (content: string): Promise<boolean> => {
+        if (!fileHandleRef.current) {
+            setError('No file selected');
+            return false;
+        }
+
+        setIsSaving(true);
+        setError(null);
+
+        // Pause polling during write to prevent reload
+        stopPolling();
+
+        try {
+            // Request write permission if needed
+            const permission = await fileHandleRef.current.requestPermission({mode: 'readwrite'});
+            if (permission !== 'granted') {
+                setError('Write permission denied');
+                startPolling();
+                setIsSaving(false);
+                return false;
+            }
+
+            // Create writable stream and write content
+            const writable = await fileHandleRef.current.createWritable();
+            await writable.write(content);
+            await writable.close();
+
+            // Update lastContentRef to prevent triggering a reload on next poll
+            lastContentRef.current = content;
+            setLastSaved(new Date());
+            setError(null);
+
+            // Resume polling
+            startPolling();
+            setIsSaving(false);
+            return true;
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Failed to save file';
+            setError(message);
+            startPolling();
+            setIsSaving(false);
+            return false;
+        }
+    }, [stopPolling, startPolling]);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -252,10 +303,13 @@ export const useFileMonitor = (onContentChange: (content: string) => void): UseF
             error,
             isSupported,
             isRestoring,
+            isSaving,
+            lastSaved,
         },
         actions: {
             selectFile,
             stopMonitoring,
+            saveToFile,
         },
     };
 };
