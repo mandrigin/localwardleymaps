@@ -257,7 +257,7 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
         saveToRemoteStorage(currentId);
     }
 
-    function downloadMap() {
+    function copyMapToClipboard() {
         if (mapRef.current === null) return;
 
         // Hide UI overlays during screenshot capture
@@ -278,12 +278,12 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
         document.body.appendChild(tempElement);
         html2canvas(tempElement, {useCORS: true, allowTaint: true})
             .then(canvas => {
-                const base64image = canvas.toDataURL('image/png');
-                const link = document.createElement('a');
-                link.download = mapTitle;
-                link.href = base64image;
-                link.click();
-                tempElement.remove();
+                canvas.toBlob(blob => {
+                    if (blob) {
+                        navigator.clipboard.write([new ClipboardItem({'image/png': blob})]);
+                    }
+                    tempElement.remove();
+                }, 'image/png');
             })
             .catch(_ => {
                 tempElement.remove();
@@ -299,18 +299,6 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
             });
     }
 
-    function downloadMapAsSVG() {
-        if (mapRef.current === null) return;
-        const svgMapText = mapRef.current
-            .getElementsByTagName('svg')[0]
-            .outerHTML.replace(/&nbsp;/g, ' ')
-            .replace(/<svg([^>]*)>/, '<svg xmlns="http://www.w3.org/2000/svg"$1>');
-        saveMapText(
-            `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">${svgMapText}`,
-            `${mapTitle}.svg`,
-        );
-    }
-
     const addIteration = () => {
         const iterations = [...mapIterations];
         iterations.push({
@@ -318,18 +306,6 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
             mapText: legacyState.mapText,
         });
         setMapIterations(iterations);
-    };
-
-    const saveMapText = (data: string, fileName: string) => {
-        const a = document.createElement('a');
-        document.body.appendChild(a);
-        a.setAttribute('style', 'display: none');
-        const blob = new Blob([data], {type: 'data:attachment/xml'});
-        const url = window.URL.createObjectURL(blob);
-        a.href = url;
-        a.download = fileName;
-        a.click();
-        window.URL.revokeObjectURL(url);
     };
 
     useEffect(() => {
@@ -641,12 +617,11 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
                     mutateMapText={mutateMapText}
                     newMapClick={newMap}
                     saveMapClick={saveMap}
-                    downloadMapImage={downloadMap}
+                    downloadMapImage={copyMapToClipboard}
                     showLineNumbers={showLineNumbers}
                     setShowLineNumbers={setShowLineNumbers}
                     showLinkedEvolved={legacyState.showLinkedEvolved}
                     setShowLinkedEvolved={legacyState.setShowLinkedEvolved}
-                    downloadMapAsSVG={downloadMapAsSVG}
                     toggleMenu={toggleMenu}
                 />
 

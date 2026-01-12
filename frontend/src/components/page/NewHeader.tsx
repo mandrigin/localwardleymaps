@@ -60,7 +60,6 @@ export interface NewHeaderProps {
     showLineNumbers: any;
     setShowLinkedEvolved: any;
     showLinkedEvolved: any;
-    downloadMapAsSVG: any;
     setMapOnlyView: any;
     mapOnlyView: any;
     toggleMenu: any;
@@ -77,7 +76,6 @@ export const NewHeader: FunctionComponent<NewHeaderProps> = ({
     showLineNumbers,
     setShowLinkedEvolved,
     showLinkedEvolved,
-    downloadMapAsSVG,
     setMapOnlyView,
     mapOnlyView,
     toggleMenu,
@@ -127,10 +125,7 @@ export const NewHeader: FunctionComponent<NewHeaderProps> = ({
             </MenuItem>
             <Divider />
             <MenuItem onClick={() => handleMoreClose(() => downloadMapImage())} disableRipple>
-                {t('export.png', 'Download as PNG')}
-            </MenuItem>
-            <MenuItem onClick={() => handleMoreClose(() => downloadMapAsSVG())} disableRipple>
-                {t('export.svg', 'Download as SVG')}
+                {t('export.copyToClipboard', 'Copy Map to Clipboard')}
             </MenuItem>
             <Divider />
             <MenuItem onClick={() => handleMoreClose(() => setShowLineNumbers(!showLineNumbers))} disableRipple>
