@@ -134,7 +134,7 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
     const [mapOnlyView, setMapOnlyView] = useState(true);
     const [currentIteration, setCurrentIteration] = useState(-1);
     const [actionInProgress, setActionInProgress] = useState(false);
-    const [hideNav, setHideNav] = useState(false);
+    const [hideNav, setHideNav] = useState(true);
 
     // File monitoring hook - connects file changes to map text updates
     const fileMonitor = useFileMonitor((content: string) => {
