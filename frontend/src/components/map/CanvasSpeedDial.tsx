@@ -60,7 +60,7 @@ export default function CanvasSpeedDial(props: CanvasSpeedDialProps) {
 
     return (
         <>
-            <Box sx={{transform: 'translateZ(0px)', flexGrow: 1}}>
+            <Box id="canvas-speed-dial" sx={{transform: 'translateZ(0px)', flexGrow: 1}}>
                 <SpeedDial
                     ariaLabel="SpeedDial basic example"
                     className={classes.smallerSpeedDial}

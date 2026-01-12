@@ -380,6 +380,7 @@ function UnifiedMapCanvas(props: ModernUnifiedMapCanvasProps) {
             </UncontrolledReactSVGPanZoom>
             {showMapToolbar && (
                 <div
+                    id="map-canvas-toolbar"
                     style={{
                         position: 'absolute',
                         bottom: '20px', // Reduced from 60px to 20px, saving 40px
