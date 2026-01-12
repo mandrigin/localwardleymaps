@@ -71,6 +71,7 @@
             "zoomIn": "Zoom In",
             "zoomOut": "Zoom Out",
             "fit": "Fit",
+            "screenshot": "Copy map to clipboard",
             "fullscreen": "Fullscreen",
             "exitFullscreen": "Exit Fullscreen"
         },

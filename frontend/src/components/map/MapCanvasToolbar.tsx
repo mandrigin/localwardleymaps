@@ -59,6 +59,13 @@ const MapCanvasToolbar: React.FC<MapCanvasToolbarProps> = ({shouldHideNav, hideN
             <IconButton id="wm-map-fit" aria-label={t('map.toolbar.fit', 'Fit')} sx={IconButtonStyle} onClick={() => _fitToViewer()}>
                 <FitScreenIcon />
             </IconButton>
+            {onScreenshot && (
+                <Tooltip title={t('map.toolbar.screenshot', 'Copy map to clipboard')}>
+                    <IconButton id="wm-map-screenshot" aria-label={t('map.toolbar.screenshot', 'Screenshot')} sx={IconButtonStyle} onClick={onScreenshot}>
+                        <CameraAltIcon />
+                    </IconButton>
+                </Tooltip>
+            )}
             <IconButton
                 id="wm-map-fullscreen"
                 onClick={() => shouldHideNav()}
