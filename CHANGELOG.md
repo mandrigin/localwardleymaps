@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Electron Desktop App** - The app can now run as a standalone desktop application using Electron. Benefits include native file system access without browser permission prompts and cross-platform distribution (Windows, macOS, Linux). Run with `yarn electron:dev` for development or `yarn electron:build` for distributable packages. (`ac0cd04`)
 
+- **CLI File Argument** - Pass a file path as a command line argument to automatically open and monitor it on launch. Works in both development (`yarn electron:dev -- /path/to/map.owm`) and production builds. Uses Node.js fs module via IPC for reliable file operations in Electron. (`3deced7`)
+
 ### Changed
 
 - **UI Layout** - Replaced the ACE Editor left panel with a compact status bar. When no file is selected, shows a "Select File" button. When monitoring, shows file path, last modified time, Save button, and Stop button.

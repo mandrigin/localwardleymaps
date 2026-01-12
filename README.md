@@ -44,6 +44,10 @@ Run as a desktop application with native file system access:
 
     yarn electron:dev
 
+Open a specific file on launch:
+
+    yarn electron:dev -- /path/to/your-map.owm
+
 Build distributable packages (outputs to `dist/`):
 
     yarn electron:build
@@ -51,6 +55,10 @@ Build distributable packages (outputs to `dist/`):
 Build unpacked for testing:
 
     yarn electron:pack
+
+After building, you can also pass a file path directly to the app:
+
+    ./dist/mac/OnlineWardleyMaps.app/Contents/MacOS/OnlineWardleyMaps /path/to/map.owm
 
 ### VS Code / Obsidian Packages
 
