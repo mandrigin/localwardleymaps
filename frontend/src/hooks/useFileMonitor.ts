@@ -185,7 +185,8 @@ export const useFileMonitor = (onContentChange: (content: string) => void): UseF
         }
 
         try {
-            const [handle] = await window.showOpenFilePicker({
+            // Non-null assertion safe here because isSupported check above guarantees this exists
+            const [handle] = await window.showOpenFilePicker!({
                 types: [
                     {
                         description: 'Wardley Map files',
