@@ -21,7 +21,14 @@ interface MapCanvasToolbarProps {
     onScreenshot?: () => void;
 }
 
-const MapCanvasToolbar: React.FC<MapCanvasToolbarProps> = ({shouldHideNav, hideNav, tool, handleChangeTool, _fitToViewer, onScreenshot}) => {
+const MapCanvasToolbar: React.FC<MapCanvasToolbarProps> = ({
+    shouldHideNav,
+    hideNav,
+    tool,
+    handleChangeTool,
+    _fitToViewer,
+    onScreenshot,
+}) => {
     const SelectedIconButtonStyle = {color: '#90caf9'};
     const IconButtonStyle = {color: 'rgba(0, 0, 0, 0.54)'};
     const {t} = useI18n();
@@ -61,7 +68,11 @@ const MapCanvasToolbar: React.FC<MapCanvasToolbarProps> = ({shouldHideNav, hideN
             </IconButton>
             {onScreenshot && (
                 <Tooltip title={t('map.toolbar.screenshot', 'Copy map to clipboard')}>
-                    <IconButton id="wm-map-screenshot" aria-label={t('map.toolbar.screenshot', 'Screenshot')} sx={IconButtonStyle} onClick={onScreenshot}>
+                    <IconButton
+                        id="wm-map-screenshot"
+                        aria-label={t('map.toolbar.screenshot', 'Screenshot')}
+                        sx={IconButtonStyle}
+                        onClick={onScreenshot}>
                         <CameraAltIcon />
                     </IconButton>
                 </Tooltip>

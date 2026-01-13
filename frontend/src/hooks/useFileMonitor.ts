@@ -249,18 +249,64 @@ export const useFileMonitor = (onContentChange: (content: string) => void): UseF
         clearFileHandle();
     }, [stopPolling]);
 
-    const saveToFile = useCallback(async (content: string): Promise<boolean> => {
-        // Handle Electron native file path
-        if (nativeFilePathRef.current && window.electronAPI) {
+    const saveToFile = useCallback(
+        async (content: string): Promise<boolean> => {
+            // Handle Electron native file path
+            if (nativeFilePathRef.current && window.electronAPI) {
+                setIsSaving(true);
+                setError(null);
+                stopPolling();
+
+                try {
+                    await window.electronAPI.writeFile(nativeFilePathRef.current, content);
+                    lastContentRef.current = content;
+                    setLastSaved(new Date());
+                    setError(null);
+                    startPolling();
+                    setIsSaving(false);
+                    return true;
+                } catch (err) {
+                    const message = err instanceof Error ? err.message : 'Failed to save file';
+                    setError(message);
+                    startPolling();
+                    setIsSaving(false);
+                    return false;
+                }
+            }
+
+            // Handle File System Access API
+            if (!fileHandleRef.current) {
+                setError('No file selected');
+                return false;
+            }
+
             setIsSaving(true);
             setError(null);
+
+            // Pause polling during write to prevent reload
             stopPolling();
 
             try {
-                await window.electronAPI.writeFile(nativeFilePathRef.current, content);
+                // Request write permission if needed
+                const permission = await fileHandleRef.current.requestPermission({mode: 'readwrite'});
+                if (permission !== 'granted') {
+                    setError('Write permission denied');
+                    startPolling();
+                    setIsSaving(false);
+                    return false;
+                }
+
+                // Create writable stream and write content
+                const writable = await fileHandleRef.current.createWritable();
+                await writable.write(content);
+                await writable.close();
+
+                // Update lastContentRef to prevent triggering a reload on next poll
                 lastContentRef.current = content;
                 setLastSaved(new Date());
                 setError(null);
+
+                // Resume polling
                 startPolling();
                 setIsSaving(false);
                 return true;
@@ -271,52 +317,9 @@ export const useFileMonitor = (onContentChange: (content: string) => void): UseF
                 setIsSaving(false);
                 return false;
             }
-        }
-
-        // Handle File System Access API
-        if (!fileHandleRef.current) {
-            setError('No file selected');
-            return false;
-        }
-
-        setIsSaving(true);
-        setError(null);
-
-        // Pause polling during write to prevent reload
-        stopPolling();
-
-        try {
-            // Request write permission if needed
-            const permission = await fileHandleRef.current.requestPermission({mode: 'readwrite'});
-            if (permission !== 'granted') {
-                setError('Write permission denied');
-                startPolling();
-                setIsSaving(false);
-                return false;
-            }
-
-            // Create writable stream and write content
-            const writable = await fileHandleRef.current.createWritable();
-            await writable.write(content);
-            await writable.close();
-
-            // Update lastContentRef to prevent triggering a reload on next poll
-            lastContentRef.current = content;
-            setLastSaved(new Date());
-            setError(null);
-
-            // Resume polling
-            startPolling();
-            setIsSaving(false);
-            return true;
-        } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to save file';
-            setError(message);
-            startPolling();
-            setIsSaving(false);
-            return false;
-        }
-    }, [stopPolling, startPolling]);
+        },
+        [stopPolling, startPolling],
+    );
 
     // Cleanup on unmount
     useEffect(() => {

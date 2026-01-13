@@ -2,7 +2,18 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import HelpCenterIcon from '@mui/icons-material/HelpCenter';
 import SaveIcon from '@mui/icons-material/Save';
 import StopIcon from '@mui/icons-material/Stop';
-import {Backdrop, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Typography} from '@mui/material';
+import {
+    Backdrop,
+    Box,
+    Button,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogContentText,
+    DialogTitle,
+    Typography,
+} from '@mui/material';
 import html2canvas from 'html2canvas';
 import Router from 'next/router';
 import React, {FunctionComponent, useEffect, useRef, useState} from 'react';

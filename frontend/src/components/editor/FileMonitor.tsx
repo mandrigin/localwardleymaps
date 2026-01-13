@@ -44,8 +44,8 @@ export const FileMonitor: React.FC<FileMonitorProps> = ({state, actions, isLight
                     Browser Not Supported
                 </Typography>
                 <Typography variant="body2" textAlign="center">
-                    File monitoring requires the File System Access API, which is not supported in this browser. Please use Chrome, Edge, or another
-                    Chromium-based browser.
+                    File monitoring requires the File System Access API, which is not supported in this browser. Please use Chrome, Edge, or
+                    another Chromium-based browser.
                 </Typography>
             </Box>
         );
@@ -166,7 +166,12 @@ export const FileMonitor: React.FC<FileMonitorProps> = ({state, actions, isLight
                         </Box>
                     )}
                     <Box sx={{display: 'flex', gap: 1}}>
-                        <Button variant="outlined" startIcon={<FolderOpenIcon />} onClick={selectFile} size="small" sx={{textTransform: 'none'}}>
+                        <Button
+                            variant="outlined"
+                            startIcon={<FolderOpenIcon />}
+                            onClick={selectFile}
+                            size="small"
+                            sx={{textTransform: 'none'}}>
                             Change File
                         </Button>
                         <Button
