@@ -52,10 +52,7 @@ async function addToRecentFiles(filePath: string): Promise<RecentFile[]> {
     const filtered = files.filter(f => f.path !== absPath);
 
     // Add at the beginning
-    const newFiles: RecentFile[] = [
-        { path: absPath, name, lastOpened: Date.now() },
-        ...filtered,
-    ].slice(0, MAX_RECENT_FILES);
+    const newFiles: RecentFile[] = [{path: absPath, name, lastOpened: Date.now()}, ...filtered].slice(0, MAX_RECENT_FILES);
 
     await saveRecentFiles(newFiles);
     return newFiles;
@@ -123,6 +120,7 @@ async function startNextServer(): Promise<void> {
         nextProcess = spawn('npm', ['run', scriptPath], {
             cwd: isDev ? path.join(__dirname, '..') : cwd,
             shell: true,
+            detached: true, // Create process group for clean shutdown
             env: {
                 ...process.env,
                 PORT: String(PORT),
@@ -152,11 +150,18 @@ async function startNextServer(): Promise<void> {
 }
 
 function killNextServer(): void {
-    if (nextProcess) {
+    if (nextProcess && nextProcess.pid) {
         if (process.platform === 'win32') {
             spawn('taskkill', ['/pid', String(nextProcess.pid), '/f', '/t']);
         } else {
-            nextProcess.kill('SIGTERM');
+            // Kill entire process group (negative PID kills the group)
+            // This ensures child processes spawned by shell are also killed
+            try {
+                process.kill(-nextProcess.pid, 'SIGTERM');
+            } catch {
+                // Fallback to regular kill if process group kill fails
+                nextProcess.kill('SIGTERM');
+            }
         }
         nextProcess = null;
     }
@@ -185,7 +190,19 @@ app.on('window-all-closed', () => {
     }
 });
 
-app.on('before-quit', () => {
+app.on('before-quit', event => {
+    if (nextProcess) {
+        event.preventDefault(); // Prevent quit until server is killed
+        killNextServer();
+        // Give time for process to die, then quit
+        setTimeout(() => {
+            app.quit();
+        }, 500);
+    }
+});
+
+app.on('will-quit', () => {
+    // Final cleanup - ensure server is dead
     killNextServer();
 });
 
