@@ -174,6 +174,110 @@ function UnifiedMapCanvas(props: ModernUnifiedMapCanvasProps) {
         } else setMapElementsClicked(s);
     };
 
+    // Spread overlapping components that don't have explicit positions
+    const handleSpreadComponents = useCallback(() => {
+        const allComponents = mapElements.getMergedComponents();
+
+        // Find components at default position (0,0) or very close together
+        const THRESHOLD = 0.05; // Components within 5% of each other are considered overlapping
+        const DEFAULT_POS_THRESHOLD = 0.01; // Components at (0,0) or very close
+
+        // Group components by their approximate position
+        const positionGroups: Map<string, typeof allComponents> = new Map();
+
+        allComponents.forEach(comp => {
+            // Check if component is at default position (no explicit coords)
+            const isAtDefault = comp.maturity < DEFAULT_POS_THRESHOLD && comp.visibility < DEFAULT_POS_THRESHOLD;
+
+            if (isAtDefault) {
+                const key = 'default';
+                if (!positionGroups.has(key)) {
+                    positionGroups.set(key, []);
+                }
+                positionGroups.get(key)!.push(comp);
+            } else {
+                // Group by approximate position
+                const gridX = Math.round(comp.maturity / THRESHOLD) * THRESHOLD;
+                const gridY = Math.round(comp.visibility / THRESHOLD) * THRESHOLD;
+                const key = `${gridX.toFixed(2)},${gridY.toFixed(2)}`;
+
+                if (!positionGroups.has(key)) {
+                    positionGroups.set(key, []);
+                }
+                positionGroups.get(key)!.push(comp);
+            }
+        });
+
+        // Find groups with overlapping components (more than 1 component)
+        const overlappingGroups = Array.from(positionGroups.entries()).filter(([, comps]) => comps.length > 1);
+
+        if (overlappingGroups.length === 0) {
+            console.log('No overlapping components found');
+            return;
+        }
+
+        // Calculate new positions for overlapping components
+        let newMapText = mapText;
+        const SPREAD_RADIUS = 0.08; // Spread components within 8% radius
+
+        overlappingGroups.forEach(([key, comps]) => {
+            // Determine center point for spreading
+            let centerX: number, centerY: number;
+
+            if (key === 'default') {
+                // For default position components, spread them in the middle of the map
+                centerX = 0.5;
+                centerY = 0.5;
+            } else {
+                // Use the average position of the group
+                centerX = comps.reduce((sum, c) => sum + c.maturity, 0) / comps.length;
+                centerY = comps.reduce((sum, c) => sum + c.visibility, 0) / comps.length;
+            }
+
+            // Spread components in a circle around the center
+            comps.forEach((comp, index) => {
+                const angle = (2 * Math.PI * index) / comps.length;
+                const radius = SPREAD_RADIUS * (0.5 + Math.random() * 0.5); // Randomize radius slightly
+
+                let newX = centerX + radius * Math.cos(angle);
+                let newY = centerY + radius * Math.sin(angle);
+
+                // Clamp to valid range [0.01, 0.99]
+                newX = Math.max(0.01, Math.min(0.99, newX));
+                newY = Math.max(0.01, Math.min(0.99, newY));
+
+                // Update the map text
+                // Match component definition with or without coordinates
+                const escapedName = comp.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+                // Pattern for component with existing coordinates: component Name [x, y]
+                const withCoordsPattern = new RegExp(
+                    `^(component\\s+${escapedName}\\s*)\\[([\\d.]+),\\s*([\\d.]+)\\]`,
+                    'gm',
+                );
+
+                // Pattern for component without coordinates: component Name (at end of line or before other attributes)
+                const withoutCoordsPattern = new RegExp(`^(component\\s+${escapedName})(?=\\s*$|\\s+label|\\s+inertia)`, 'gm');
+
+                if (withCoordsPattern.test(newMapText)) {
+                    // Component has coordinates, update them
+                    newMapText = newMapText.replace(withCoordsPattern, `$1[${newX.toFixed(2)}, ${newY.toFixed(2)}]`);
+                } else if (withoutCoordsPattern.test(newMapText)) {
+                    // Component doesn't have coordinates, add them
+                    newMapText = newMapText.replace(
+                        withoutCoordsPattern,
+                        `$1 [${newX.toFixed(2)}, ${newY.toFixed(2)}]`,
+                    );
+                }
+            });
+        });
+
+        if (newMapText !== mapText) {
+            mutateMapText(newMapText);
+            console.log('Spread components:', overlappingGroups.map(([key, comps]) => `${key}: ${comps.length} components`));
+        }
+    }, [mapElements, mapText, mutateMapText]);
+
     const handleScreenshot = useCallback(async () => {
         const mapCanvas = document.getElementById('map-canvas');
         if (!mapCanvas) {
@@ -421,6 +525,7 @@ function UnifiedMapCanvas(props: ModernUnifiedMapCanvasProps) {
                                 }
                             }
                         }}
+                        onSpreadComponents={handleSpreadComponents}
                         onScreenshot={handleScreenshot}
                     />
                 </div>

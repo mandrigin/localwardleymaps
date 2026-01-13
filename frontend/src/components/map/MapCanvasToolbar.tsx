@@ -4,6 +4,7 @@ import FitScreenIcon from '@mui/icons-material/FitScreen';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
 import HandIcon from '@mui/icons-material/PanToolAlt';
+import ScatterPlotIcon from '@mui/icons-material/ScatterPlot';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 
@@ -19,6 +20,7 @@ interface MapCanvasToolbarProps {
     handleChangeTool: (event: MouseEvent<HTMLButtonElement>, newTool: string) => void;
     _fitToViewer: () => void;
     onScreenshot?: () => void;
+    onSpreadComponents?: () => void;
 }
 
 const MapCanvasToolbar: React.FC<MapCanvasToolbarProps> = ({
@@ -28,6 +30,7 @@ const MapCanvasToolbar: React.FC<MapCanvasToolbarProps> = ({
     handleChangeTool,
     _fitToViewer,
     onScreenshot,
+    onSpreadComponents,
 }) => {
     const SelectedIconButtonStyle = {color: '#90caf9'};
     const IconButtonStyle = {color: 'rgba(0, 0, 0, 0.54)'};
@@ -66,6 +69,17 @@ const MapCanvasToolbar: React.FC<MapCanvasToolbarProps> = ({
             <IconButton id="wm-map-fit" aria-label={t('map.toolbar.fit', 'Fit')} sx={IconButtonStyle} onClick={() => _fitToViewer()}>
                 <FitScreenIcon />
             </IconButton>
+            {onSpreadComponents && (
+                <Tooltip title={t('map.toolbar.spread', 'Spread overlapping components')}>
+                    <IconButton
+                        id="wm-map-spread"
+                        aria-label={t('map.toolbar.spread', 'Spread')}
+                        sx={IconButtonStyle}
+                        onClick={onSpreadComponents}>
+                        <ScatterPlotIcon />
+                    </IconButton>
+                </Tooltip>
+            )}
             {onScreenshot && (
                 <Tooltip title={t('map.toolbar.screenshot', 'Copy map to clipboard')}>
                     <IconButton
