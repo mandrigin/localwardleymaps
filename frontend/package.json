@@ -55,8 +55,8 @@
         "jest": true
     },
     "build": {
-        "appId": "com.wardleymaps.app",
-        "productName": "Wardley Maps",
+        "appId": "com.localwardleymaps.app",
+        "productName": "Local Wardley Maps",
         "directories": {
             "output": "dist-electron",
             "buildResources": "build"
@@ -76,14 +76,17 @@
         ],
         "mac": {
             "category": "public.app-category.productivity",
-            "target": ["dmg", "zip"]
+            "target": ["dmg", "zip"],
+            "icon": "assets/icon.icns"
         },
         "win": {
-            "target": ["nsis", "portable"]
+            "target": ["nsis", "portable"],
+            "icon": "assets/icon.png"
         },
         "linux": {
             "target": ["AppImage", "deb"],
-            "category": "Office"
+            "category": "Office",
+            "icon": "assets/icon.png"
         }
     },
     "resolutions": {

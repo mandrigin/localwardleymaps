@@ -43,7 +43,7 @@ function createWindow(): void {
             contextIsolation: true,
             nodeIntegration: false,
         },
-        title: 'Wardley Maps',
+        title: 'Local Wardley Maps',
         show: false,
     });
 
