@@ -36,6 +36,7 @@ export interface FileMonitorState {
 
 export interface FileMonitorActions {
     selectFile: () => Promise<void>;
+    openFile: (filePath: string) => Promise<void>;
     stopMonitoring: () => void;
     saveToFile: (content: string) => Promise<boolean>;
     reloadFile: () => Promise<void>;
@@ -193,6 +194,45 @@ export const useFileMonitor = (onContentChange: (content: string) => void): UseF
             return;
         }
 
+        // Use Electron's native dialog if available (provides file path for recent files)
+        if (isElectron && window.electronAPI?.showOpenDialog) {
+            try {
+                const selectedPath = await window.electronAPI.showOpenDialog();
+                if (!selectedPath) {
+                    // User cancelled
+                    return;
+                }
+
+                setIsRestoring(true);
+
+                // Read file content via IPC
+                const {content, lastModified: mtime} = await window.electronAPI.readFile(selectedPath);
+
+                nativeFilePathRef.current = selectedPath;
+                const name = selectedPath.split(/[/\\]/).pop() || selectedPath;
+                setFileName(name);
+                setFilePath(selectedPath);
+                setIsElectronNative(true);
+                lastContentRef.current = content;
+                setLastModified(new Date(mtime));
+                onContentChange(content);
+
+                // Add to recent files
+                await window.electronAPI.addRecentFile(selectedPath);
+
+                setIsMonitoring(true);
+                startPolling();
+                setError(null);
+            } catch (err) {
+                const message = err instanceof Error ? err.message : 'Failed to open file';
+                setError(message);
+            } finally {
+                setIsRestoring(false);
+            }
+            return;
+        }
+
+        // Fallback to File System Access API for browsers
         try {
             // Non-null assertion safe here because isSupported check above guarantees this exists
             const [handle] = await window.showOpenFilePicker!({
@@ -232,7 +272,42 @@ export const useFileMonitor = (onContentChange: (content: string) => void): UseF
             const message = err instanceof Error ? err.message : 'Failed to open file';
             setError(message);
         }
-    }, [isSupported, readFileContent, onContentChange, startPolling]);
+    }, [isSupported, isElectron, readFileContent, onContentChange, startPolling]);
+
+    // Open a file by path (for recent files in Electron)
+    const openFile = useCallback(
+        async (filePath: string) => {
+            if (!window.electronAPI) {
+                setError('Opening by path is only supported in Electron');
+                return;
+            }
+
+            try {
+                // Read file content via IPC
+                const {content, lastModified: mtime} = await window.electronAPI.readFile(filePath);
+
+                nativeFilePathRef.current = filePath;
+                const name = filePath.split(/[/\\]/).pop() || filePath;
+                setFileName(name);
+                setFilePath(filePath);
+                setIsElectronNative(true);
+                lastContentRef.current = content;
+                setLastModified(new Date(mtime));
+                onContentChange(content);
+
+                // Add to recent files
+                await window.electronAPI.addRecentFile(filePath);
+
+                setIsMonitoring(true);
+                startPolling();
+                setError(null);
+            } catch (err) {
+                const message = err instanceof Error ? err.message : 'Failed to open file';
+                setError(message);
+            }
+        },
+        [onContentChange, startPolling],
+    );
 
     const stopMonitoring = useCallback(() => {
         stopPolling();
@@ -432,6 +507,9 @@ export const useFileMonitor = (onContentChange: (content: string) => void): UseF
                 setLastModified(new Date(mtime));
                 onContentChange(content);
 
+                // Add to recent files
+                await window.electronAPI!.addRecentFile(cliPath);
+
                 setIsMonitoring(true);
                 startPolling();
             } catch (err) {
@@ -460,6 +538,7 @@ export const useFileMonitor = (onContentChange: (content: string) => void): UseF
         },
         actions: {
             selectFile,
+            openFile,
             stopMonitoring,
             saveToFile,
             reloadFile,

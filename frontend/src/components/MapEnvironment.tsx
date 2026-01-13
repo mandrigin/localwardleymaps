@@ -182,10 +182,7 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
         if (!window.electronAPI) return;
 
         try {
-            const {content} = await window.electronAPI.readFile(filePath);
-            legacyState.mutateMapText(content);
-            setSaveOutstanding(false);
-            recentFiles.addRecentFile(filePath);
+            await fileMonitor.actions.openFile(filePath);
             setShowWelcome(false);
         } catch (err) {
             console.error('Failed to open recent file:', err);

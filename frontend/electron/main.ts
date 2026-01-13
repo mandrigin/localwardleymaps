@@ -1,4 +1,4 @@
-import {app, BrowserWindow, ipcMain} from 'electron';
+import {app, BrowserWindow, dialog, ipcMain, Menu} from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import {spawn, ChildProcess} from 'child_process';
@@ -6,6 +6,7 @@ import {spawn, ChildProcess} from 'child_process';
 let mainWindow: BrowserWindow | null = null;
 let nextProcess: ChildProcess | null = null;
 let cliFilePath: string | null = null;
+let isQuitting = false;
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -168,6 +169,59 @@ function killNextServer(): void {
 }
 
 app.whenReady().then(async () => {
+    // Set up application menu (required for Cmd+Q on macOS)
+    if (process.platform === 'darwin') {
+        const template: Electron.MenuItemConstructorOptions[] = [
+            {
+                label: app.name,
+                submenu: [
+                    {role: 'about'},
+                    {type: 'separator'},
+                    {role: 'hide'},
+                    {role: 'hideOthers'},
+                    {role: 'unhide'},
+                    {type: 'separator'},
+                    {role: 'quit'},
+                ],
+            },
+            {
+                label: 'File',
+                submenu: [{role: 'close'}],
+            },
+            {
+                label: 'Edit',
+                submenu: [
+                    {role: 'undo'},
+                    {role: 'redo'},
+                    {type: 'separator'},
+                    {role: 'cut'},
+                    {role: 'copy'},
+                    {role: 'paste'},
+                    {role: 'selectAll'},
+                ],
+            },
+            {
+                label: 'View',
+                submenu: [
+                    {role: 'reload'},
+                    {role: 'forceReload'},
+                    {role: 'toggleDevTools'},
+                    {type: 'separator'},
+                    {role: 'resetZoom'},
+                    {role: 'zoomIn'},
+                    {role: 'zoomOut'},
+                    {type: 'separator'},
+                    {role: 'togglefullscreen'},
+                ],
+            },
+            {
+                label: 'Window',
+                submenu: [{role: 'minimize'}, {role: 'zoom'}, {type: 'separator'}, {role: 'front'}],
+            },
+        ];
+        Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+    }
+
     try {
         await startNextServer();
         createWindow();
@@ -191,12 +245,15 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', event => {
+    if (isQuitting) return; // Already quitting, don't recurse
+
     if (nextProcess) {
         event.preventDefault(); // Prevent quit until server is killed
+        isQuitting = true;
         killNextServer();
-        // Give time for process to die, then quit
+        // Give time for process to die, then force exit
         setTimeout(() => {
-            app.quit();
+            app.exit(0); // Use exit() to bypass event handlers
         }, 500);
     }
 });
@@ -263,4 +320,23 @@ ipcMain.handle('remove-recent-file', async (_event, filePath: string) => {
 ipcMain.handle('clear-recent-files', async () => {
     await saveRecentFiles([]);
     return [];
+});
+
+// File dialog handler - returns file path for Electron native file selection
+ipcMain.handle('show-open-dialog', async () => {
+    if (!mainWindow) return null;
+
+    const result = await dialog.showOpenDialog(mainWindow, {
+        properties: ['openFile'],
+        filters: [
+            {name: 'Wardley Map files', extensions: ['owm', 'wardley', 'txt']},
+            {name: 'All files', extensions: ['*']},
+        ],
+    });
+
+    if (result.canceled || result.filePaths.length === 0) {
+        return null;
+    }
+
+    return result.filePaths[0];
 });

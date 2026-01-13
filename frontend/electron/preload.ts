@@ -27,6 +27,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     removeRecentFile: (filePath: string): Promise<RecentFile[]> => ipcRenderer.invoke('remove-recent-file', filePath),
     clearRecentFiles: (): Promise<RecentFile[]> => ipcRenderer.invoke('clear-recent-files'),
 
+    // File dialog
+    showOpenDialog: (): Promise<string | null> => ipcRenderer.invoke('show-open-dialog'),
+
     // Platform detection
     platform: process.platform,
     isElectron: true,
@@ -45,6 +48,7 @@ declare global {
             addRecentFile: (filePath: string) => Promise<RecentFile[]>;
             removeRecentFile: (filePath: string) => Promise<RecentFile[]>;
             clearRecentFiles: () => Promise<RecentFile[]>;
+            showOpenDialog: () => Promise<string | null>;
             platform: NodeJS.Platform;
             isElectron: boolean;
         };
