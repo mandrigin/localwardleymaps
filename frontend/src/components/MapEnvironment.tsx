@@ -151,6 +151,7 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
     const [actionInProgress, setActionInProgress] = useState(false);
     const [hideNav, setHideNav] = useState(true);
     const [showWelcome, setShowWelcome] = useState(true);
+    const [mapKey, setMapKey] = useState(0); // Increment to force remount of map components
 
     // File monitoring hook - connects file changes to map text updates
     const fileMonitor = useFileMonitor((content: string) => {
@@ -195,6 +196,43 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
     const handleBrowseFile = () => {
         fileMonitor.actions.selectFile();
         setShowWelcome(false);
+    };
+
+    // Reset all map state to initial values (for hard reload)
+    const resetMapState = () => {
+        // Reset unified map state
+        mapActions.setMapDimensions(Defaults.MapDimensions);
+        mapActions.setMapCanvasDimensions(Defaults.MapDimensions);
+        mapActions.setMapStyleDefs(MapStyles.Plain);
+        mapActions.setMapEvolutionStates(Defaults.EvolutionStages);
+        mapActions.setHighlightedLine(0);
+        mapActions.setNewComponentContext(null);
+        mapActions.setShowLinkedEvolved(false);
+        mapActions.setShowUsage(false);
+
+        // Reset local state
+        setCurrentUrl('');
+        setMapTitle('Untitled Map');
+        setRawMapTitle('Untitled Map');
+        setInvalid(false);
+        setMapAnnotationsPresentation({maturity: 0, visibility: 0});
+        setMapIterations([]);
+        setMapSize({width: 0, height: 0});
+        setMapStyle('plain');
+        setSaveOutstanding(false);
+        setErrorLine([]);
+        setCurrentIteration(-1);
+
+        // Increment key to force remount of map components (fresh canvas state)
+        setMapKey(k => k + 1);
+    };
+
+    // Handler for reload with full state reset
+    const handleReloadWithReset = async () => {
+        resetMapState();
+        // Small delay to let React process state resets before loading new content
+        await new Promise(resolve => setTimeout(resolve, 50));
+        await fileMonitor.actions.reloadFile();
     };
 
     // Wrapper function for setting map text that also handles iterations and save state
@@ -635,7 +673,7 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
                                 size="small"
                                 variant="text"
                                 startIcon={<RefreshIcon />}
-                                onClick={() => fileMonitor.actions.reloadFile()}
+                                onClick={handleReloadWithReset}
                                 sx={{
                                     textTransform: 'none',
                                     minWidth: 'auto',
@@ -738,7 +776,7 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
                                     width: '100%',
                                     height: '100%',
                                 }}>
-                                <ModKeyPressedProvider>
+                                <ModKeyPressedProvider key={`map-provider-split-${mapKey}`}>
                                     <MapView
                                         wardleyMap={unifiedMapState.getUnifiedMap()}
                                         shouldHideNav={shouldHideNav}
@@ -770,7 +808,7 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
                             width: '100%',
                             height: '100%',
                         }}>
-                        <ModKeyPressedProvider>
+                        <ModKeyPressedProvider key={`map-provider-full-${mapKey}`}>
                             <MapView
                                 wardleyMap={unifiedMapState.getUnifiedMap()}
                                 shouldHideNav={shouldHideNav}
