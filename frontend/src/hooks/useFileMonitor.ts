@@ -11,6 +11,9 @@ declare global {
             multiple?: boolean;
         }) => Promise<FileSystemFileHandle[]>;
     }
+    interface FileSystemFileHandle {
+        requestPermission?: (descriptor: {mode: 'read' | 'readwrite'}) => Promise<PermissionState>;
+    }
 }
 
 export interface FileMonitorState {
