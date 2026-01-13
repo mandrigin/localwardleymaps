@@ -181,6 +181,12 @@ function UnifiedMapCanvas(props: ModernUnifiedMapCanvasProps) {
             return;
         }
 
+        // Hide toolbar during screenshot
+        const toolbar = document.getElementById('map-canvas-toolbar');
+        if (toolbar) {
+            toolbar.style.display = 'none';
+        }
+
         try {
             // Use html2canvas to capture the map
             const canvas = await html2canvas(mapCanvas, {
@@ -226,6 +232,11 @@ function UnifiedMapCanvas(props: ModernUnifiedMapCanvasProps) {
             console.log('Screenshot downloaded as file (clipboard not available)');
         } catch (error) {
             console.error('Screenshot failed:', error);
+        } finally {
+            // Restore toolbar visibility
+            if (toolbar) {
+                toolbar.style.display = '';
+            }
         }
     }, []);
 
