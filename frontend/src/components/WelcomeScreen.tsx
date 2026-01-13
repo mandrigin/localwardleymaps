@@ -105,10 +105,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                             display: 'block',
                             textAlign: 'center',
                         }}>
-                        {t(
-                            'welcome.tip',
-                            'Tip: You can also open files from the command line: lwm /path/to/file.owm',
-                        )}
+                        {t('welcome.tip', 'Tip: You can also open files from the command line: lwm /path/to/file.owm')}
                     </Typography>
                 </Box>
             </Paper>

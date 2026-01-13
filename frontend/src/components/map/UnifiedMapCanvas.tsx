@@ -224,7 +224,7 @@ function UnifiedMapCanvas(props: ModernUnifiedMapCanvasProps) {
             // Determine center point and spread radius based on number of components
             let centerX: number, centerY: number;
             // Spread radius - smaller for tighter grouping
-            const baseRadius = 0.10;
+            const baseRadius = 0.1;
             const SPREAD_RADIUS = Math.min(0.25, baseRadius + comps.length * 0.015);
 
             if (key === 'default') {
@@ -255,10 +255,7 @@ function UnifiedMapCanvas(props: ModernUnifiedMapCanvasProps) {
                 const escapedName = comp.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
                 // Pattern for component with existing coordinates: component Name [x, y]
-                const withCoordsPattern = new RegExp(
-                    `^(component\\s+${escapedName}\\s*)\\[([\\d.]+),\\s*([\\d.]+)\\]`,
-                    'gm',
-                );
+                const withCoordsPattern = new RegExp(`^(component\\s+${escapedName}\\s*)\\[([\\d.]+),\\s*([\\d.]+)\\]`, 'gm');
 
                 // Pattern for component without coordinates: component Name (at end of line or before other attributes)
                 const withoutCoordsPattern = new RegExp(`^(component\\s+${escapedName})(?=\\s*$|\\s+label|\\s+inertia)`, 'gm');
@@ -268,17 +265,17 @@ function UnifiedMapCanvas(props: ModernUnifiedMapCanvasProps) {
                     newMapText = newMapText.replace(withCoordsPattern, `$1[${newY.toFixed(2)}, ${newX.toFixed(2)}]`);
                 } else if (withoutCoordsPattern.test(newMapText)) {
                     // Component doesn't have coordinates, add them
-                    newMapText = newMapText.replace(
-                        withoutCoordsPattern,
-                        `$1 [${newY.toFixed(2)}, ${newX.toFixed(2)}]`,
-                    );
+                    newMapText = newMapText.replace(withoutCoordsPattern, `$1 [${newY.toFixed(2)}, ${newX.toFixed(2)}]`);
                 }
             });
         });
 
         if (newMapText !== mapText) {
             mutateMapText(newMapText);
-            console.log('Spread components:', overlappingGroups.map(([key, comps]) => `${key}: ${comps.length} components`));
+            console.log(
+                'Spread components:',
+                overlappingGroups.map(([key, comps]) => `${key}: ${comps.length} components`),
+            );
         }
     }, [mapElements, mapText, mutateMapText]);
 

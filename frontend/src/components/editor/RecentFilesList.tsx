@@ -93,10 +93,7 @@ const RecentFilesList: React.FC<RecentFilesListProps> = ({
                 </Typography>
                 {recentFiles.length > 0 && (
                     <Tooltip title={t('recentFiles.clearAll', 'Clear all')}>
-                        <IconButton
-                            size="small"
-                            onClick={onClearAll}
-                            sx={{color: isLightTheme ? '#1565c0' : '#90caf9'}}>
+                        <IconButton size="small" onClick={onClearAll} sx={{color: isLightTheme ? '#1565c0' : '#90caf9'}}>
                             <ClearIcon fontSize="small" />
                         </IconButton>
                     </Tooltip>
