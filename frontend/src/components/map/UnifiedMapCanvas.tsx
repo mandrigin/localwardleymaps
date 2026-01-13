@@ -229,9 +229,9 @@ function UnifiedMapCanvas(props: ModernUnifiedMapCanvasProps) {
 
             if (key === 'default') {
                 // For default position components, spread them across the map
-                // Use a grid-like distribution for many components
-                centerX = 0.5;
-                centerY = 0.6; // Slightly higher (visibility 0.6 = upper-middle area)
+                // Center in upper-left quadrant (genesis/custom, high visibility)
+                centerX = 0.35;
+                centerY = 0.65; // Upper area (visibility 0.65 = visible)
             } else {
                 // Use the average position of the group
                 centerX = comps.reduce((sum, c) => sum + c.maturity, 0) / comps.length;
@@ -239,15 +239,15 @@ function UnifiedMapCanvas(props: ModernUnifiedMapCanvasProps) {
             }
 
             // Spread components in a circle around the center
-            // Start angle at top and go clockwise
-            // Note: In Wardley maps, visibility increases upward (Y=1 is top)
-            // We invert the Y term so positive angles go UP in visibility
+            // In Wardley maps: visibility 1.0 = top, 0.0 = bottom
+            // So adding to Y moves UP, subtracting moves DOWN
+            // Start from left side (PI) and spread around
             comps.forEach((comp, index) => {
-                const angle = (2 * Math.PI * index) / comps.length;
+                const angle = Math.PI + (2 * Math.PI * index) / comps.length;
                 const radius = SPREAD_RADIUS * (0.7 + Math.random() * 0.3); // Randomize radius 70-100%
 
                 let newX = centerX + radius * Math.cos(angle);
-                let newY = centerY - radius * Math.sin(angle); // Invert Y for Wardley visibility coords
+                let newY = centerY + radius * Math.sin(angle); // ADD to go UP (higher visibility)
 
                 // Clamp to valid range [0.05, 0.95] to keep components away from edges
                 newX = Math.max(0.05, Math.min(0.95, newX));
