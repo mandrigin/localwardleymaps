@@ -72,17 +72,6 @@ const MapCanvasToolbar: React.FC<MapCanvasToolbarProps> = ({shouldHideNav, hideN
                 aria-label={hideNav ? t('map.toolbar.exitFullscreen', 'Exit Fullscreen') : t('map.toolbar.fullscreen', 'Fullscreen')}>
                 {hideNav ? <FullscreenExitIcon sx={IconButtonStyle} /> : <FullscreenIcon sx={IconButtonStyle} />}
             </IconButton>
-            {onScreenshot && (
-                <Tooltip title={t('map.toolbar.screenshot', 'Copy map to clipboard')}>
-                    <IconButton
-                        id="wm-map-screenshot"
-                        onClick={onScreenshot}
-                        aria-label={t('map.toolbar.screenshot', 'Copy map to clipboard')}
-                        sx={IconButtonStyle}>
-                        <CameraAltIcon />
-                    </IconButton>
-                </Tooltip>
-            )}
         </ButtonGroup>
     );
 };
