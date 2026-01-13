@@ -8,6 +8,58 @@ let nextProcess: ChildProcess | null = null;
 let cliFilePath: string | null = null;
 
 const isDev = process.env.NODE_ENV === 'development';
+
+// Recent files storage
+interface RecentFile {
+    path: string;
+    name: string;
+    lastOpened: number;
+}
+
+const MAX_RECENT_FILES = 10;
+
+function getRecentFilesPath(): string {
+    return path.join(app.getPath('userData'), 'recent-files.json');
+}
+
+async function loadRecentFiles(): Promise<RecentFile[]> {
+    try {
+        const filePath = getRecentFilesPath();
+        if (!fs.existsSync(filePath)) {
+            return [];
+        }
+        const content = await fs.promises.readFile(filePath, 'utf-8');
+        const files = JSON.parse(content) as RecentFile[];
+        // Filter out files that no longer exist
+        const validFiles = files.filter(f => fs.existsSync(f.path));
+        return validFiles.slice(0, MAX_RECENT_FILES);
+    } catch {
+        return [];
+    }
+}
+
+async function saveRecentFiles(files: RecentFile[]): Promise<void> {
+    const filePath = getRecentFilesPath();
+    await fs.promises.writeFile(filePath, JSON.stringify(files, null, 2), 'utf-8');
+}
+
+async function addToRecentFiles(filePath: string): Promise<RecentFile[]> {
+    const files = await loadRecentFiles();
+    const name = path.basename(filePath);
+    const absPath = path.resolve(filePath);
+
+    // Remove if already exists
+    const filtered = files.filter(f => f.path !== absPath);
+
+    // Add at the beginning
+    const newFiles: RecentFile[] = [
+        { path: absPath, name, lastOpened: Date.now() },
+        ...filtered,
+    ].slice(0, MAX_RECENT_FILES);
+
+    await saveRecentFiles(newFiles);
+    return newFiles;
+}
 const PORT = process.env.PORT || 3000;
 
 // Parse CLI arguments for file path
@@ -172,4 +224,26 @@ ipcMain.handle('get-file-stats', async (_event, filePath: string) => {
     } catch (err) {
         throw new Error(`Failed to get file stats: ${err instanceof Error ? err.message : String(err)}`);
     }
+});
+
+// Recent files IPC handlers
+ipcMain.handle('get-recent-files', async () => {
+    return await loadRecentFiles();
+});
+
+ipcMain.handle('add-recent-file', async (_event, filePath: string) => {
+    return await addToRecentFiles(filePath);
+});
+
+ipcMain.handle('remove-recent-file', async (_event, filePath: string) => {
+    const files = await loadRecentFiles();
+    const absPath = path.resolve(filePath);
+    const filtered = files.filter(f => f.path !== absPath);
+    await saveRecentFiles(filtered);
+    return filtered;
+});
+
+ipcMain.handle('clear-recent-files', async () => {
+    await saveRecentFiles([]);
+    return [];
 });

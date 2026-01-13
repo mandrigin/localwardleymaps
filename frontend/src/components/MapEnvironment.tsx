@@ -28,7 +28,9 @@ import {MapIteration, OwnApiWardleyMap} from '../repository/OwnApiWardleyMap';
 import {SaveMap} from '../repository/SaveMap';
 import {MapAnnotationsPosition, MapSize} from '../types/base';
 import {useFileMonitor} from '../hooks/useFileMonitor';
+import {useRecentFiles} from '../hooks/useRecentFiles';
 import {useFeatureSwitches} from './FeatureSwitchesContext';
+import WelcomeScreen from './WelcomeScreen';
 import {ModKeyPressedProvider} from './KeyPressContext';
 import QuickAdd from './actions/QuickAdd';
 import {ResizableSplitPane} from './common/ResizableSplitPane';
@@ -147,12 +149,52 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
     const [currentIteration, setCurrentIteration] = useState(-1);
     const [actionInProgress, setActionInProgress] = useState(false);
     const [hideNav, setHideNav] = useState(true);
+    const [showWelcome, setShowWelcome] = useState(true);
 
     // File monitoring hook - connects file changes to map text updates
     const fileMonitor = useFileMonitor((content: string) => {
         legacyState.mutateMapText(content);
         setSaveOutstanding(true);
     });
+
+    // Recent files management
+    const recentFiles = useRecentFiles();
+
+    // Track files in recent list when monitoring starts
+    useEffect(() => {
+        if (fileMonitor.state.isMonitoring && fileMonitor.state.filePath) {
+            recentFiles.addRecentFile(fileMonitor.state.filePath);
+            setShowWelcome(false);
+        }
+    }, [fileMonitor.state.isMonitoring, fileMonitor.state.filePath]);
+
+    // Hide welcome screen when map has content
+    useEffect(() => {
+        if (legacyState.mapText && legacyState.mapText.trim().length > 0) {
+            setShowWelcome(false);
+        }
+    }, [legacyState.mapText]);
+
+    // Handler for opening a recent file (Electron only)
+    const handleOpenRecentFile = async (filePath: string) => {
+        if (!window.electronAPI) return;
+
+        try {
+            const {content} = await window.electronAPI.readFile(filePath);
+            legacyState.mutateMapText(content);
+            setSaveOutstanding(false);
+            recentFiles.addRecentFile(filePath);
+            setShowWelcome(false);
+        } catch (err) {
+            console.error('Failed to open recent file:', err);
+        }
+    };
+
+    // Handler for browsing files (opens file picker)
+    const handleBrowseFile = () => {
+        fileMonitor.actions.selectFile();
+        setShowWelcome(false);
+    };
 
     // Wrapper function for setting map text that also handles iterations and save state
     const mutateMapText = (newText: string) => {
@@ -649,7 +691,17 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
             </Box>
 
             <Box sx={{flexGrow: 1, height: '100%', overflow: 'hidden'}}>
-                {mapOnlyView === false ? (
+                {showWelcome && !fileMonitor.state.isMonitoring ? (
+                    <WelcomeScreen
+                        recentFiles={recentFiles.recentFiles}
+                        isLoading={recentFiles.isLoading}
+                        onFileSelect={handleOpenRecentFile}
+                        onRemoveFile={recentFiles.removeRecentFile}
+                        onClearAll={recentFiles.clearRecentFiles}
+                        onBrowse={handleBrowseFile}
+                        isLightTheme={isLightTheme}
+                    />
+                ) : mapOnlyView === false ? (
                     <ResizableSplitPane
                         defaultLeftWidth={33}
                         minLeftWidth={20}

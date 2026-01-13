@@ -180,13 +180,14 @@ function UnifiedMapCanvas(props: ModernUnifiedMapCanvasProps) {
 
         // Find components at default position (0,0) or very close together
         const THRESHOLD = 0.05; // Components within 5% of each other are considered overlapping
-        const DEFAULT_POS_THRESHOLD = 0.01; // Components at (0,0) or very close
+        const DEFAULT_POS_THRESHOLD = 0.02; // Components at (0,0) or very close
 
         // Group components by their approximate position
         const positionGroups: Map<string, typeof allComponents> = new Map();
 
         allComponents.forEach(comp => {
             // Check if component is at default position (no explicit coords)
+            // In Wardley maps: maturity 0 = genesis (left), visibility 0 = invisible (bottom)
             const isAtDefault = comp.maturity < DEFAULT_POS_THRESHOLD && comp.visibility < DEFAULT_POS_THRESHOLD;
 
             if (isAtDefault) {
@@ -218,16 +219,19 @@ function UnifiedMapCanvas(props: ModernUnifiedMapCanvasProps) {
 
         // Calculate new positions for overlapping components
         let newMapText = mapText;
-        const SPREAD_RADIUS = 0.08; // Spread components within 8% radius
 
         overlappingGroups.forEach(([key, comps]) => {
-            // Determine center point for spreading
+            // Determine center point and spread radius based on number of components
             let centerX: number, centerY: number;
+            // Larger spread for more components, minimum 20%, up to 50% for many components
+            const baseRadius = 0.20;
+            const SPREAD_RADIUS = Math.min(0.50, baseRadius + comps.length * 0.03);
 
             if (key === 'default') {
-                // For default position components, spread them in the middle of the map
+                // For default position components, spread them across the map
+                // Use a grid-like distribution for many components
                 centerX = 0.5;
-                centerY = 0.5;
+                centerY = 0.6; // Slightly higher (visibility 0.6 = upper-middle area)
             } else {
                 // Use the average position of the group
                 centerX = comps.reduce((sum, c) => sum + c.maturity, 0) / comps.length;
@@ -235,16 +239,19 @@ function UnifiedMapCanvas(props: ModernUnifiedMapCanvasProps) {
             }
 
             // Spread components in a circle around the center
+            // Start angle at top and go clockwise
+            // Note: In Wardley maps, visibility increases upward (Y=1 is top)
+            // We invert the Y term so positive angles go UP in visibility
             comps.forEach((comp, index) => {
                 const angle = (2 * Math.PI * index) / comps.length;
-                const radius = SPREAD_RADIUS * (0.5 + Math.random() * 0.5); // Randomize radius slightly
+                const radius = SPREAD_RADIUS * (0.7 + Math.random() * 0.3); // Randomize radius 70-100%
 
                 let newX = centerX + radius * Math.cos(angle);
-                let newY = centerY + radius * Math.sin(angle);
+                let newY = centerY - radius * Math.sin(angle); // Invert Y for Wardley visibility coords
 
-                // Clamp to valid range [0.01, 0.99]
-                newX = Math.max(0.01, Math.min(0.99, newX));
-                newY = Math.max(0.01, Math.min(0.99, newY));
+                // Clamp to valid range [0.05, 0.95] to keep components away from edges
+                newX = Math.max(0.05, Math.min(0.95, newX));
+                newY = Math.max(0.05, Math.min(0.95, newY));
 
                 // Update the map text
                 // Match component definition with or without coordinates
