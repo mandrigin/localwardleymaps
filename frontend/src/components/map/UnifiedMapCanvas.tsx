@@ -223,9 +223,9 @@ function UnifiedMapCanvas(props: ModernUnifiedMapCanvasProps) {
         overlappingGroups.forEach(([key, comps]) => {
             // Determine center point and spread radius based on number of components
             let centerX: number, centerY: number;
-            // Larger spread for more components, minimum 20%, up to 50% for many components
-            const baseRadius = 0.20;
-            const SPREAD_RADIUS = Math.min(0.50, baseRadius + comps.length * 0.03);
+            // Spread radius - smaller for tighter grouping
+            const baseRadius = 0.10;
+            const SPREAD_RADIUS = Math.min(0.25, baseRadius + comps.length * 0.015);
 
             if (key === 'default') {
                 // For default position components, spread them across the map
