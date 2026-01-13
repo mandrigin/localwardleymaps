@@ -235,6 +235,14 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
         await fileMonitor.actions.reloadFile();
     };
 
+    // Handler for stop that returns to welcome/recent files screen
+    const handleStopAndShowWelcome = () => {
+        fileMonitor.actions.stopMonitoring();
+        resetMapState();
+        legacyState.mutateMapText('');
+        setShowWelcome(true);
+    };
+
     // Wrapper function for setting map text that also handles iterations and save state
     const mutateMapText = (newText: string) => {
         legacyState.mutateMapText(newText);
@@ -687,9 +695,9 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
                                 variant="text"
                                 color="error"
                                 startIcon={<StopIcon />}
-                                onClick={fileMonitor.actions.stopMonitoring}
+                                onClick={handleStopAndShowWelcome}
                                 sx={{textTransform: 'none', minWidth: 'auto', padding: '2px 8px'}}>
-                                Stop
+                                Close
                             </Button>
                         </Box>
                     </>
