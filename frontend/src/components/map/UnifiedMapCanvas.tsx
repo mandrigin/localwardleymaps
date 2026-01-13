@@ -239,15 +239,12 @@ function UnifiedMapCanvas(props: ModernUnifiedMapCanvasProps) {
             }
 
             // Spread components in a circle around the center
-            // Wardley map coords: [maturity, visibility] where maturity=X, visibility=Y
-            // But canvas renders with Y inverted, so we swap sin/cos
             comps.forEach((comp, index) => {
                 const angle = (2 * Math.PI * index) / comps.length;
                 const radius = SPREAD_RADIUS * (0.7 + Math.random() * 0.3); // Randomize radius 70-100%
 
-                // Swap sin/cos to account for Wardley map coordinate system
-                let newX = centerX + radius * Math.sin(angle);
-                let newY = centerY + radius * Math.cos(angle);
+                let newX = centerX + radius * Math.cos(angle);
+                let newY = centerY + radius * Math.sin(angle);
 
                 // Clamp to valid range [0.05, 0.95] to keep components away from edges
                 newX = Math.max(0.05, Math.min(0.95, newX));
@@ -268,12 +265,12 @@ function UnifiedMapCanvas(props: ModernUnifiedMapCanvasProps) {
 
                 if (withCoordsPattern.test(newMapText)) {
                     // Component has coordinates, update them
-                    newMapText = newMapText.replace(withCoordsPattern, `$1[${newX.toFixed(2)}, ${newY.toFixed(2)}]`);
+                    newMapText = newMapText.replace(withCoordsPattern, `$1[${newY.toFixed(2)}, ${newX.toFixed(2)}]`);
                 } else if (withoutCoordsPattern.test(newMapText)) {
                     // Component doesn't have coordinates, add them
                     newMapText = newMapText.replace(
                         withoutCoordsPattern,
-                        `$1 [${newX.toFixed(2)}, ${newY.toFixed(2)}]`,
+                        `$1 [${newY.toFixed(2)}, ${newX.toFixed(2)}]`,
                     );
                 }
             });
