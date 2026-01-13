@@ -1,5 +1,6 @@
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import HelpCenterIcon from '@mui/icons-material/HelpCenter';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import SaveIcon from '@mui/icons-material/Save';
 import StopIcon from '@mui/icons-material/Stop';
 import {
@@ -629,6 +630,19 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
                                     color: isLightTheme ? '#1565c0' : '#90caf9',
                                 }}>
                                 {fileMonitor.state.isSaving ? 'Saving...' : 'Save'}
+                            </Button>
+                            <Button
+                                size="small"
+                                variant="text"
+                                startIcon={<RefreshIcon />}
+                                onClick={() => fileMonitor.actions.reloadFile()}
+                                sx={{
+                                    textTransform: 'none',
+                                    minWidth: 'auto',
+                                    padding: '2px 8px',
+                                    color: isLightTheme ? '#1565c0' : '#90caf9',
+                                }}>
+                                Reload
                             </Button>
                             <Button
                                 size="small"

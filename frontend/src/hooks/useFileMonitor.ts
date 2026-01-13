@@ -38,6 +38,7 @@ export interface FileMonitorActions {
     selectFile: () => Promise<void>;
     stopMonitoring: () => void;
     saveToFile: (content: string) => Promise<boolean>;
+    reloadFile: () => Promise<void>;
 }
 
 export interface UseFileMonitorResult {
@@ -321,6 +322,40 @@ export const useFileMonitor = (onContentChange: (content: string) => void): UseF
         [stopPolling, startPolling],
     );
 
+    const reloadFile = useCallback(async () => {
+        // Handle Electron native file path
+        if (nativeFilePathRef.current && window.electronAPI) {
+            try {
+                const {content, lastModified: mtime} = await window.electronAPI.readFile(nativeFilePathRef.current);
+                lastContentRef.current = content;
+                setLastModified(new Date(mtime));
+                onContentChange(content);
+                setError(null);
+            } catch (err) {
+                const message = err instanceof Error ? err.message : 'Failed to reload file';
+                setError(message);
+            }
+            return;
+        }
+
+        // Handle File System Access API
+        if (!fileHandleRef.current) {
+            setError('No file selected');
+            return;
+        }
+
+        try {
+            const {content, modified} = await readFileContent(fileHandleRef.current);
+            lastContentRef.current = content;
+            setLastModified(modified);
+            onContentChange(content);
+            setError(null);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Failed to reload file';
+            setError(message);
+        }
+    }, [readFileContent, onContentChange]);
+
     // Cleanup on unmount
     useEffect(() => {
         return () => {
@@ -427,6 +462,7 @@ export const useFileMonitor = (onContentChange: (content: string) => void): UseF
             selectFile,
             stopMonitoring,
             saveToFile,
+            reloadFile,
         },
     };
 };
