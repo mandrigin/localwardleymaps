@@ -12,8 +12,8 @@ declare global {
         }) => Promise<FileSystemFileHandle[]>;
     }
     interface FileSystemFileHandle {
-        requestPermission?: (descriptor: {mode: 'read' | 'readwrite'}) => Promise<PermissionState>;
-        createWritable?: () => Promise<FileSystemWritableFileStream>;
+        requestPermission(descriptor: {mode: 'read' | 'readwrite'}): Promise<PermissionState>;
+        createWritable(): Promise<FileSystemWritableFileStream>;
     }
     interface FileSystemWritableFileStream extends WritableStream {
         write(data: string | BufferSource | Blob): Promise<void>;
