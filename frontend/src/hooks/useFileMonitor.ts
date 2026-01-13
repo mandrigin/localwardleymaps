@@ -1,5 +1,18 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 
+// File System Access API types (not in standard TS lib)
+declare global {
+    interface Window {
+        showOpenFilePicker?: (options?: {
+            types?: Array<{
+                description: string;
+                accept: Record<string, string[]>;
+            }>;
+            multiple?: boolean;
+        }) => Promise<FileSystemFileHandle[]>;
+    }
+}
+
 export interface FileMonitorState {
     isMonitoring: boolean;
     fileName: string | null;
