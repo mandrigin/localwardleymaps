@@ -37,6 +37,7 @@ amplifytools.xcconfig
 dist-electron/
 electron/*.js
 electron/*.js.map
+resources/
 *.dmg
 *.AppImage
 *.deb

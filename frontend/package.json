@@ -62,16 +62,28 @@
             "buildResources": "build"
         },
         "files": [
-            "electron/**/*.js",
-            ".next/**/*",
-            "public/**/*",
-            "node_modules/**/*",
-            "package.json"
+            "electron/**/*.js"
         ],
         "extraResources": [
             {
                 "from": ".next",
                 "to": "app/.next"
+            },
+            {
+                "from": "public",
+                "to": "app/public"
+            },
+            {
+                "from": "node_modules",
+                "to": "app/node_modules"
+            },
+            {
+                "from": "package.json",
+                "to": "app/package.json"
+            },
+            {
+                "from": "resources/node",
+                "to": "node"
             }
         ],
         "mac": {
@@ -127,9 +139,10 @@
         "build": "next build",
         "start": "next start",
         "electron:dev": "npm run electron:compile && concurrently -k \"npm run dev\" \"wait-on http://localhost:3000 && NODE_ENV=development electron .\"",
-        "electron:build": "npm run build && npm run electron:compile && electron-builder",
+        "electron:download-node": "node scripts/download-node.js",
+        "electron:build": "npm run build && npm run electron:compile && npm run electron:download-node && electron-builder",
         "electron:compile": "tsc -p electron/tsconfig.json",
-        "electron:pack": "npm run build && npm run electron:compile && electron-builder --dir",
+        "electron:pack": "npm run build && npm run electron:compile && npm run electron:download-node && electron-builder --dir",
         "lint": "node scripts/lint-with-progress.js --fix",
         "lint:check": "node scripts/lint-with-progress.js",
         "lint:simple": "eslint . --fix",
