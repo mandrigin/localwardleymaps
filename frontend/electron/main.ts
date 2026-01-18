@@ -1,70 +1,35 @@
 import {app, BrowserWindow, dialog, ipcMain, Menu} from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import * as os from 'os';
 import {spawn, ChildProcess} from 'child_process';
 
 let mainWindow: BrowserWindow | null = null;
-
-/**
- * Get enhanced PATH that includes common Node.js installation locations.
- * When launched from Finder/Dock, the app doesn't inherit shell environment
- * variables like nvm's PATH additions. This function detects common Node.js
- * paths and prepends them to ensure Node/npm can be found.
- */
-function getEnhancedPath(): string {
-    const existingPath = process.env.PATH || '';
-    const homeDir = os.homedir();
-    const additionalPaths: string[] = [];
-
-    // Check nvm installations - find the latest version
-    const nvmDir = path.join(homeDir, '.nvm', 'versions', 'node');
-    if (fs.existsSync(nvmDir)) {
-        try {
-            const versions = fs.readdirSync(nvmDir)
-                .filter(v => v.startsWith('v'))
-                .sort((a, b) => {
-                    // Sort by version number (v22.x.x > v20.x.x)
-                    const parseVersion = (v: string) => {
-                        const match = v.match(/^v(\d+)/);
-                        return match ? parseInt(match[1], 10) : 0;
-                    };
-                    return parseVersion(b) - parseVersion(a);
-                });
-
-            if (versions.length > 0) {
-                const latestNodeBin = path.join(nvmDir, versions[0], 'bin');
-                if (fs.existsSync(latestNodeBin)) {
-                    additionalPaths.push(latestNodeBin);
-                }
-            }
-        } catch {
-            // Ignore errors reading nvm directory
-        }
-    }
-
-    // Check Homebrew paths (Apple Silicon and Intel)
-    const homebrewPaths = [
-        '/opt/homebrew/bin',      // Apple Silicon
-        '/usr/local/bin',         // Intel Mac / traditional
-    ];
-    for (const brewPath of homebrewPaths) {
-        if (fs.existsSync(brewPath) && !existingPath.includes(brewPath)) {
-            additionalPaths.push(brewPath);
-        }
-    }
-
-    if (additionalPaths.length === 0) {
-        return existingPath;
-    }
-
-    return [...additionalPaths, existingPath].join(path.delimiter);
-}
 let nextProcess: ChildProcess | null = null;
 let cliFilePath: string | null = null;
 let isQuitting = false;
 
 const isDev = process.env.NODE_ENV === 'development';
+
+/**
+ * Get the path to the bundled Node.js binary (production) or null (development).
+ * In production, Node.js is bundled in the resources directory.
+ */
+function getBundledNodePath(): string | null {
+    if (isDev) {
+        return null;
+    }
+
+    const platform = process.platform;
+    const nodeBinary = platform === 'win32' ? 'node.exe' : 'node';
+    const nodePath = path.join(process.resourcesPath, 'node', nodeBinary);
+
+    if (fs.existsSync(nodePath)) {
+        return nodePath;
+    }
+
+    console.warn('Bundled Node.js not found at:', nodePath);
+    return null;
+}
 
 // Recent files storage
 interface RecentFile {
@@ -171,19 +136,39 @@ function createWindow(): void {
 
 async function startNextServer(): Promise<void> {
     return new Promise((resolve, reject) => {
-        const scriptPath = isDev ? 'dev' : 'start';
-        const cwd = isDev ? process.cwd() : path.join(process.resourcesPath, 'app');
+        const bundledNode = getBundledNodePath();
 
-        nextProcess = spawn('npm', ['run', scriptPath], {
-            cwd: isDev ? path.join(__dirname, '..') : cwd,
-            shell: true,
-            detached: true, // Create process group for clean shutdown
-            env: {
-                ...process.env,
-                PATH: getEnhancedPath(),
-                PORT: String(PORT),
-            },
-        });
+        if (isDev) {
+            // Development mode: use system npm
+            nextProcess = spawn('npm', ['run', 'dev'], {
+                cwd: path.join(__dirname, '..'),
+                shell: true,
+                detached: true,
+                env: {
+                    ...process.env,
+                    PORT: String(PORT),
+                },
+            });
+        } else {
+            // Production mode: use bundled Node.js to run Next.js directly
+            const appDir = path.join(process.resourcesPath, 'app');
+            const nextBin = path.join(appDir, 'node_modules', 'next', 'dist', 'bin', 'next');
+
+            if (!bundledNode) {
+                reject(new Error('Bundled Node.js not found'));
+                return;
+            }
+
+            nextProcess = spawn(bundledNode, [nextBin, 'start'], {
+                cwd: appDir,
+                detached: true,
+                env: {
+                    ...process.env,
+                    PORT: String(PORT),
+                    NODE_ENV: 'production',
+                },
+            });
+        }
 
         nextProcess.stdout?.on('data', (data: Buffer) => {
             const output = data.toString();
