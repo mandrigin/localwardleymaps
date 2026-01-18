@@ -19,3 +19,6 @@ copilot_reports/*
 frontend/wmlandscape/.yarn
 frontend/.eslintcache
 .venv
+
+# Beads tracking
+.beads/
