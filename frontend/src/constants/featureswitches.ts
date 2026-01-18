@@ -11,4 +11,5 @@ export const featureSwitches: IProvideFeatureSwitches = {
     showMiniMap: false,
     allowMapZoomMouseWheel: true,
     enableModernComponents: true, // Phase 4: Enabled modern unified components by default
+    enableAutoSave: false, // Auto-save when editing visually (default off)
 };

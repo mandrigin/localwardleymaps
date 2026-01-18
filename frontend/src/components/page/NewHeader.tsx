@@ -63,6 +63,8 @@ export interface NewHeaderProps {
     setMapOnlyView: any;
     mapOnlyView: any;
     toggleMenu: any;
+    autoSaveEnabled: boolean;
+    setAutoSaveEnabled: (enabled: boolean) => void;
 }
 
 export const NewHeader: FunctionComponent<NewHeaderProps> = ({
@@ -79,6 +81,8 @@ export const NewHeader: FunctionComponent<NewHeaderProps> = ({
     setMapOnlyView,
     mapOnlyView,
     toggleMenu,
+    autoSaveEnabled,
+    setAutoSaveEnabled,
 }) => {
     const [anchorMoreEl, setAnchorMoreEl] = useState<Element | null>();
     const [modalShow, setModalShow] = useState(false);
@@ -135,6 +139,9 @@ export const NewHeader: FunctionComponent<NewHeaderProps> = ({
                 {showLinkedEvolved
                     ? t('header.hideEvolvedLinks', 'Hide Evolved Links')
                     : t('header.showEvolvedLinks', 'Show Evolved Links')}
+            </MenuItem>
+            <MenuItem onClick={() => handleMoreClose(() => setAutoSaveEnabled(!autoSaveEnabled))} disableRipple>
+                {autoSaveEnabled ? t('header.disableAutoSave', 'Disable Auto-Save') : t('header.enableAutoSave', 'Enable Auto-Save')}
             </MenuItem>
             <Divider />
             <MenuItem onClick={() => handleMoreClose(() => window.open('https://docs.onlinewardleymaps.com'))} disableRipple>

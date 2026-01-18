@@ -152,12 +152,42 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
     const [hideNav, setHideNav] = useState(true);
     const [showWelcome, setShowWelcome] = useState(true);
     const [mapKey, setMapKey] = useState(0); // Increment to force remount of map components
+    const [autoSaveEnabled, setAutoSaveEnabled] = useState(false); // Auto-save toggle
 
     // File monitoring hook - connects file changes to map text updates
     const fileMonitor = useFileMonitor((content: string) => {
         legacyState.mutateMapText(content);
         setSaveOutstanding(true);
     });
+
+    // Auto-save timer ref
+    const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Auto-save effect - saves automatically when enabled and map text changes
+    useEffect(() => {
+        // Clear any existing timer
+        if (autoSaveTimerRef.current) {
+            clearTimeout(autoSaveTimerRef.current);
+            autoSaveTimerRef.current = null;
+        }
+
+        // Only auto-save when enabled, monitoring a file, and there are outstanding changes
+        if (!autoSaveEnabled || !fileMonitor.state.isMonitoring || !saveOutstanding) {
+            return;
+        }
+
+        // Debounce auto-save by 2 seconds
+        autoSaveTimerRef.current = setTimeout(() => {
+            fileMonitor.actions.saveToFile(legacyState.mapText);
+            setSaveOutstanding(false);
+        }, 2000);
+
+        return () => {
+            if (autoSaveTimerRef.current) {
+                clearTimeout(autoSaveTimerRef.current);
+            }
+        };
+    }, [legacyState.mapText, autoSaveEnabled, fileMonitor.state.isMonitoring, saveOutstanding]);
 
     // Recent files management
     const recentFiles = useRecentFiles();
@@ -651,6 +681,19 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
                             )}
                         </Box>
                         <Box sx={{display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0}}>
+                            {autoSaveEnabled && (
+                                <Typography
+                                    variant="caption"
+                                    sx={{
+                                        color: isLightTheme ? '#1565c0' : '#64b5f6',
+                                        backgroundColor: isLightTheme ? '#bbdefb' : '#1e3a5f',
+                                        padding: '2px 6px',
+                                        borderRadius: '4px',
+                                        fontWeight: 500,
+                                    }}>
+                                    Auto-save
+                                </Typography>
+                            )}
                             {fileMonitor.state.lastSaved && (
                                 <Typography
                                     variant="caption"
@@ -733,6 +776,8 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
                     showLinkedEvolved={legacyState.showLinkedEvolved}
                     setShowLinkedEvolved={legacyState.setShowLinkedEvolved}
                     toggleMenu={toggleMenu}
+                    autoSaveEnabled={autoSaveEnabled}
+                    setAutoSaveEnabled={setAutoSaveEnabled}
                 />
 
                 <Breadcrumb currentUrl={currentUrl} />
