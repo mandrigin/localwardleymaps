@@ -209,8 +209,9 @@ function UnifiedMapCanvas(props: ModernUnifiedMapCanvasProps) {
             }
         });
 
-        // Find groups with overlapping components (more than 1 component)
-        const overlappingGroups = Array.from(positionGroups.entries()).filter(([, comps]) => comps.length > 1);
+        // Find groups to spread: overlapping components (>1 at same position)
+        // OR any components at default position (even single ones need X/Y added)
+        const overlappingGroups = Array.from(positionGroups.entries()).filter(([key, comps]) => comps.length > 1 || key === 'default');
 
         if (overlappingGroups.length === 0) {
             console.log('No overlapping components found');
