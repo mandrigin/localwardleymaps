@@ -7,12 +7,14 @@ import {
     Backdrop,
     Box,
     Button,
+    Checkbox,
     CircularProgress,
     Dialog,
     DialogActions,
     DialogContent,
     DialogContentText,
     DialogTitle,
+    FormControlLabel,
     Typography,
 } from '@mui/material';
 import html2canvas from 'html2canvas';
@@ -152,12 +154,53 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
     const [hideNav, setHideNav] = useState(true);
     const [showWelcome, setShowWelcome] = useState(true);
     const [mapKey, setMapKey] = useState(0); // Increment to force remount of map components
+    const [autoSave, setAutoSave] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('wardleyMap_autoSave');
+            return saved === 'true';
+        }
+        return false;
+    });
 
     // File monitoring hook - connects file changes to map text updates
     const fileMonitor = useFileMonitor((content: string) => {
         legacyState.mutateMapText(content);
         setSaveOutstanding(true);
     });
+
+    // Persist auto-save preference to localStorage
+    useEffect(() => {
+        localStorage.setItem('wardleyMap_autoSave', autoSave.toString());
+    }, [autoSave]);
+
+    // Auto-save effect - saves when auto-save is enabled and changes are made
+    const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+    useEffect(() => {
+        // Only auto-save when:
+        // 1. Auto-save is enabled
+        // 2. File is being monitored
+        // 3. There are outstanding changes
+        // 4. Not currently saving
+        if (autoSave && fileMonitor.state.isMonitoring && saveOutstanding && !fileMonitor.state.isSaving) {
+            // Clear any existing timer
+            if (autoSaveTimerRef.current) {
+                clearTimeout(autoSaveTimerRef.current);
+            }
+            // Debounce auto-save by 1 second to avoid excessive saves during rapid editing
+            autoSaveTimerRef.current = setTimeout(() => {
+                fileMonitor.actions.saveToFile(legacyState.mapText).then(success => {
+                    if (success) {
+                        setSaveOutstanding(false);
+                    }
+                });
+            }, 1000);
+        }
+        return () => {
+            if (autoSaveTimerRef.current) {
+                clearTimeout(autoSaveTimerRef.current);
+            }
+        };
+    }, [autoSave, fileMonitor.state.isMonitoring, saveOutstanding, fileMonitor.state.isSaving, legacyState.mapText]);
 
     // Recent files management
     const recentFiles = useRecentFiles();
@@ -660,12 +703,40 @@ const MapEnvironment: FunctionComponent<MapEnvironmentProps> = ({
                                     Saved {fileMonitor.state.lastSaved.toLocaleTimeString()}
                                 </Typography>
                             )}
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        size="small"
+                                        checked={autoSave}
+                                        onChange={e => setAutoSave(e.target.checked)}
+                                        sx={{
+                                            padding: '2px',
+                                            color: isLightTheme ? '#1565c0' : '#90caf9',
+                                            '&.Mui-checked': {
+                                                color: isLightTheme ? '#1565c0' : '#90caf9',
+                                            },
+                                        }}
+                                    />
+                                }
+                                label="Auto-save"
+                                sx={{
+                                    marginRight: 0,
+                                    '& .MuiFormControlLabel-label': {
+                                        fontSize: '0.75rem',
+                                        color: isLightTheme ? '#1565c0' : '#90caf9',
+                                    },
+                                }}
+                            />
                             <Button
                                 size="small"
                                 variant="text"
                                 startIcon={<SaveIcon />}
-                                onClick={() => fileMonitor.actions.saveToFile(legacyState.mapText)}
-                                disabled={fileMonitor.state.isSaving}
+                                onClick={() =>
+                                    fileMonitor.actions.saveToFile(legacyState.mapText).then(success => {
+                                        if (success) setSaveOutstanding(false);
+                                    })
+                                }
+                                disabled={fileMonitor.state.isSaving || autoSave}
                                 sx={{
                                     textTransform: 'none',
                                     minWidth: 'auto',
