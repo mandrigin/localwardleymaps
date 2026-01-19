@@ -11,6 +11,57 @@ let isQuitting = false;
 const isDev = process.env.NODE_ENV === 'development';
 
 /**
+ * Get additional Node.js paths for development mode.
+ * When launched from Finder/Dock, the shell PATH doesn't include nvm or Homebrew paths.
+ * This function detects common Node.js installation locations.
+ */
+function getNodePaths(): string[] {
+    const paths: string[] = [];
+    const home = process.env.HOME || '';
+
+    // Check nvm paths - find installed node versions
+    const nvmDir = path.join(home, '.nvm', 'versions', 'node');
+    if (fs.existsSync(nvmDir)) {
+        try {
+            const versions = fs.readdirSync(nvmDir);
+            // Sort versions descending to prefer newer versions
+            versions.sort((a, b) => b.localeCompare(a, undefined, {numeric: true}));
+            for (const version of versions) {
+                const binPath = path.join(nvmDir, version, 'bin');
+                if (fs.existsSync(binPath)) {
+                    paths.push(binPath);
+                    break; // Use the newest version
+                }
+            }
+        } catch {
+            // Ignore errors reading nvm directory
+        }
+    }
+
+    // Check Homebrew paths (Apple Silicon and Intel)
+    const homebrewPaths = ['/opt/homebrew/bin', '/usr/local/bin'];
+    for (const brewPath of homebrewPaths) {
+        if (fs.existsSync(path.join(brewPath, 'node'))) {
+            paths.push(brewPath);
+        }
+    }
+
+    return paths;
+}
+
+/**
+ * Get augmented PATH with Node.js paths for spawning processes.
+ */
+function getAugmentedPath(): string {
+    const nodePaths = getNodePaths();
+    const currentPath = process.env.PATH || '';
+    if (nodePaths.length === 0) {
+        return currentPath;
+    }
+    return [...nodePaths, currentPath].join(path.delimiter);
+}
+
+/**
  * Get the path to the bundled Node.js binary (production) or null (development).
  * In production, Node.js is bundled in the resources directory.
  */
@@ -140,12 +191,14 @@ async function startNextServer(): Promise<void> {
 
         if (isDev) {
             // Development mode: use system npm
+            // Augment PATH to include nvm/Homebrew paths when launched from Finder
             nextProcess = spawn('npm', ['run', 'dev'], {
                 cwd: path.join(__dirname, '..'),
                 shell: true,
                 detached: true,
                 env: {
                     ...process.env,
+                    PATH: getAugmentedPath(),
                     PORT: String(PORT),
                 },
             });
