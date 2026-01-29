@@ -78,17 +78,16 @@ public struct GridDrawing {
             }
         }
 
-        // Y-axis label: "Visibility" (rotated)
-        // We'll draw "Value Chain" text at the top-left
+        // Y-axis labels
         context.draw(
             Text("Visible").font(.system(size: 10)).foregroundStyle(theme.mapGridTextColor),
-            at: CGPoint(x: padding - 2, y: padding - 10),
-            anchor: .trailing
+            at: CGPoint(x: padding + 4, y: padding - 10),
+            anchor: .leading
         )
         context.draw(
             Text("Invisible").font(.system(size: 10)).foregroundStyle(theme.mapGridTextColor),
-            at: CGPoint(x: padding - 2, y: size.height - padding + 2),
-            anchor: .trailing
+            at: CGPoint(x: padding + 4, y: size.height - padding + 12),
+            anchor: .leading
         )
 
         // Evolution arrow at bottom
