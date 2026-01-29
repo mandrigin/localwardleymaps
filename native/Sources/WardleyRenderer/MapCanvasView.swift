@@ -70,7 +70,8 @@ public struct MapCanvasView: View {
                 calc: calc
             )
 
-            ComponentDrawing.drawElements(
+            // --- Dots layer (below labels) ---
+            ComponentDrawing.drawElementDots(
                 context: &context,
                 elements: map.elements,
                 theme: theme,
@@ -78,14 +79,14 @@ public struct MapCanvasView: View {
                 highlightedLine: highlightedLine
             )
 
-            ComponentDrawing.drawAnchors(
+            ComponentDrawing.drawAnchorDots(
                 context: &context,
                 anchors: map.anchors,
                 theme: theme,
                 calc: calc
             )
 
-            ComponentDrawing.drawSubmaps(
+            ComponentDrawing.drawSubmapDots(
                 context: &context,
                 submaps: map.submaps,
                 theme: theme,
@@ -118,6 +119,28 @@ public struct MapCanvasView: View {
                 context: &context,
                 methods: map.methods,
                 elements: map.elements,
+                theme: theme,
+                calc: calc
+            )
+
+            // --- Labels layer (on top of everything) ---
+            ComponentDrawing.drawElementLabels(
+                context: &context,
+                elements: map.elements,
+                theme: theme,
+                calc: calc
+            )
+
+            ComponentDrawing.drawAnchorLabels(
+                context: &context,
+                anchors: map.anchors,
+                theme: theme,
+                calc: calc
+            )
+
+            ComponentDrawing.drawSubmapLabels(
+                context: &context,
+                submaps: map.submaps,
                 theme: theme,
                 calc: calc
             )
