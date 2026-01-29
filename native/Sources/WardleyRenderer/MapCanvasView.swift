@@ -7,6 +7,7 @@ public struct MapCanvasView: View {
     public let map: WardleyMap
     public let theme: MapTheme
     public let highlightedLine: Int?
+    public let glitchProgress: [String: GlitchInfo]
     public let onComponentTap: ((MapElement) -> Void)?
     public let onComponentDrag: ((MapElement, CGPoint) -> Void)?
 
@@ -14,12 +15,14 @@ public struct MapCanvasView: View {
         map: WardleyMap,
         theme: MapTheme,
         highlightedLine: Int? = nil,
+        glitchProgress: [String: GlitchInfo] = [:],
         onComponentTap: ((MapElement) -> Void)? = nil,
         onComponentDrag: ((MapElement, CGPoint) -> Void)? = nil
     ) {
         self.map = map
         self.theme = theme
         self.highlightedLine = highlightedLine
+        self.glitchProgress = glitchProgress
         self.onComponentTap = onComponentTap
         self.onComponentDrag = onComponentDrag
     }
@@ -76,7 +79,8 @@ public struct MapCanvasView: View {
                 elements: map.elements,
                 theme: theme,
                 calc: calc,
-                highlightedLine: highlightedLine
+                highlightedLine: highlightedLine,
+                glitchProgress: glitchProgress
             )
 
             ComponentDrawing.drawAnchorDots(
@@ -128,7 +132,8 @@ public struct MapCanvasView: View {
                 context: &context,
                 elements: map.elements,
                 theme: theme,
-                calc: calc
+                calc: calc,
+                glitchProgress: glitchProgress
             )
 
             ComponentDrawing.drawAnchorLabels(

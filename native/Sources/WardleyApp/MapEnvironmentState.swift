@@ -24,6 +24,19 @@ public final class MapEnvironmentState {
     public var fileURL: URL?
     public var lastModified: Date?
 
+    // MARK: - Glitch Animation State
+
+    public var glitchEntries: [GlitchEntry] = []
+
+    public var isGlitching: Bool { !glitchEntries.isEmpty }
+
+    /// Remove entries whose animation has completed (older than 0.8s).
+    public func cleanupExpiredGlitches(at date: Date) {
+        glitchEntries.removeAll { entry in
+            date.timeIntervalSince(entry.startTime) >= GlitchEntry.duration
+        }
+    }
+
     private let parser = WardleyParser()
     private let fileMonitor = FileMonitorService()
 
@@ -77,10 +90,41 @@ public final class MapEnvironmentState {
     }
 
     public func reparseMap() {
+        // Snapshot old element positions by name for diff
+        let oldElements = Dictionary(
+            parsedMap.elements.map { ($0.name, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+
         parsedMap = parser.parse(mapText)
         let styleName = parsedMap.presentation.style
         if !styleName.isEmpty && styleName != currentThemeName {
             currentThemeName = styleName
+        }
+
+        // Diff: detect new and changed elements
+        let now = Date()
+        let activeNames = Set(glitchEntries.map(\.elementName))
+        for element in parsedMap.elements {
+            guard !activeNames.contains(element.name) else { continue }
+
+            if let old = oldElements[element.name] {
+                let visMoved = abs(old.visibility - element.visibility) > 0.001
+                let matMoved = abs(old.maturity - element.maturity) > 0.001
+                if visMoved || matMoved {
+                    glitchEntries.append(GlitchEntry(
+                        elementName: element.name,
+                        startTime: now,
+                        isNew: false
+                    ))
+                }
+            } else if !oldElements.isEmpty {
+                glitchEntries.append(GlitchEntry(
+                    elementName: element.name,
+                    startTime: now,
+                    isNew: true
+                ))
+            }
         }
     }
 

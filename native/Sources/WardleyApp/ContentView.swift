@@ -22,25 +22,29 @@ public struct ContentView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            // Full canvas
-            MapCanvasView(
-                map: state.parsedMap,
-                theme: state.currentTheme,
-                onComponentDrag: { element, newPosition in
-                    let calc = PositionCalculator()
-                    let newVis = calc.yToVisibility(newPosition.y)
-                    let newMat = calc.xToMaturity(newPosition.x)
-                    if let updated = PositionUpdater.updatePosition(
-                        in: state.mapText,
-                        componentName: element.name,
-                        newVisibility: newVis,
-                        newMaturity: newMat
-                    ) {
-                        state.mapText = updated
-                        writeBackToDisk(updated)
+            // Full canvas wrapped in TimelineView for glitch animation
+            TimelineView(.animation(minimumInterval: 1.0/60, paused: !state.isGlitching)) { timeline in
+                let glitchProgress = computeGlitchProgress(at: timeline.date)
+                MapCanvasView(
+                    map: state.parsedMap,
+                    theme: state.currentTheme,
+                    glitchProgress: glitchProgress,
+                    onComponentDrag: { element, newPosition in
+                        let calc = PositionCalculator()
+                        let newVis = calc.yToVisibility(newPosition.y)
+                        let newMat = calc.xToMaturity(newPosition.x)
+                        if let updated = PositionUpdater.updatePosition(
+                            in: state.mapText,
+                            componentName: element.name,
+                            newVisibility: newVis,
+                            newMaturity: newMat
+                        ) {
+                            state.mapText = updated
+                            writeBackToDisk(updated)
+                        }
                     }
-                }
-            )
+                )
+            }
             .background(state.currentTheme.containerBackground)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -61,6 +65,17 @@ public struct ContentView: View {
             handleDrop(providers)
         }
         .frame(minWidth: 600, minHeight: 400)
+    }
+
+    private func computeGlitchProgress(at date: Date) -> [String: GlitchInfo] {
+        state.cleanupExpiredGlitches(at: date)
+        var result: [String: GlitchInfo] = [:]
+        for entry in state.glitchEntries {
+            let elapsed = date.timeIntervalSince(entry.startTime)
+            let progress = min(max(elapsed / GlitchEntry.duration, 0), 1)
+            result[entry.elementName] = GlitchInfo(progress: progress, isNew: entry.isNew)
+        }
+        return result
     }
 
     private func exportPNG() {
