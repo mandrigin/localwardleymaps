@@ -42,20 +42,40 @@ bundle_app() {
     <true/>
     <key>NSSupportsAutomaticTermination</key>
     <true/>
+    <key>UTImportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>com.wardleymaps.owm</string>
+            <key>UTTypeDescription</key>
+            <string>Wardley Map</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.plain-text</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>owm</string>
+                    <string>wardley</string>
+                </array>
+            </dict>
+        </dict>
+    </array>
     <key>CFBundleDocumentTypes</key>
     <array>
         <dict>
-            <key>CFBundleTypeExtensions</key>
-            <array>
-                <string>owm</string>
-                <string>wardley</string>
-            </array>
             <key>CFBundleTypeName</key>
             <string>Wardley Map</string>
             <key>CFBundleTypeRole</key>
             <string>Viewer</string>
             <key>LSHandlerRank</key>
             <string>Owner</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>com.wardleymaps.owm</string>
+            </array>
         </dict>
     </array>
 </dict>
