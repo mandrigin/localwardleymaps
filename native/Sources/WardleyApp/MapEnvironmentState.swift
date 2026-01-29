@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Observation
 import WardleyModel
@@ -37,6 +38,14 @@ public final class MapEnvironmentState {
         }
     }
 
+    // MARK: - Drag State
+
+    /// Override position for the element currently being dragged (screen coords).
+    public var dragOverride: (elementName: String, position: CGPoint)? = nil
+
+    /// True when in-memory mapText differs from what's on disk.
+    public var hasUnsavedChanges: Bool = false
+
     private let parser = WardleyParser()
     private let fileMonitor = FileMonitorService()
 
@@ -71,6 +80,17 @@ public final class MapEnvironmentState {
               let text = String(data: data, encoding: .utf8) else { return }
         mapText = text
         lastModified = (try? FileManager.default.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date ?? Date()
+        hasUnsavedChanges = false
+    }
+
+    /// Write the current mapText to disk and clear the unsaved flag.
+    public func saveToDisk() {
+        guard let url = fileURL,
+              let data = mapText.data(using: .utf8) else { return }
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+        try? data.write(to: url, options: .atomic)
+        hasUnsavedChanges = false
     }
 
     /// Stop monitoring the current file.

@@ -44,7 +44,22 @@ public struct StatusBarView: View {
                     .font(.caption)
             }
 
+            // Unsaved changes indicator
+            if state.hasUnsavedChanges {
+                Circle()
+                    .fill(.orange)
+                    .frame(width: 6, height: 6)
+            }
+
             Spacer()
+
+            // Save button
+            Button("Save", systemImage: "square.and.arrow.down") {
+                state.saveToDisk()
+            }
+            .font(.caption)
+            .buttonStyle(.bordered)
+            .disabled(!state.hasUnsavedChanges)
 
             // Actions
             Button("Export PNG", systemImage: "square.and.arrow.up") {

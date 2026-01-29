@@ -4,8 +4,7 @@ import WardleyTheme
 
 /// Draws components (circles with labels), anchors, and evolved components.
 public struct ComponentDrawing {
-
-    // CRT glitch brand colors
+    // CRT brand colors (shared by glitch and drag effects)
     private static let alertColor = Color(red: 1.0, green: 0.267, blue: 0.0)       // #FF4400
     private static let signalColor = Color(red: 0.0, green: 1.0, blue: 0.533)      // #00FF88
     private static let cyanColor = Color(red: 0.0, green: 0.8, blue: 1.0)          // #00CCFF
@@ -24,17 +23,61 @@ public struct ComponentDrawing {
         theme: MapTheme,
         calc: PositionCalculator,
         highlightedLine: Int? = nil,
-        glitchProgress: [String: GlitchInfo] = [:]
+        glitchProgress: [String: GlitchInfo] = [:],
+        positionOverrides: [String: CGPoint] = [:]
     ) {
         for element in elements {
-            let pt = calc.point(visibility: element.visibility, maturity: element.maturity)
+            let pt = positionOverrides[element.name] ?? calc.point(visibility: element.visibility, maturity: element.maturity)
+            let isDragging = positionOverrides[element.name] != nil
             let isHighlighted = highlightedLine == element.line
             let isEvolved = element.evolved
             let strokeColor = isEvolved ? theme.component.evolved : theme.component.stroke
             let fillColor = isEvolved ? theme.component.evolvedFill : theme.component.fill
             let r = theme.component.radius
 
-            if let glitch = glitchProgress[element.name], glitch.progress < 1.0 {
+            if isDragging {
+                // === DRAG EFFECT: enlarged, semi-transparent, chromatic aberration ===
+                let dragR = r * 1.5
+
+                // Chromatic aberration ghosts (fixed offset, CRT style)
+                let aberration: CGFloat = 3.0
+                let rightPt = CGPoint(x: pt.x + aberration, y: pt.y - 1)
+                let rightRect = CGRect(x: rightPt.x - dragR, y: rightPt.y - dragR, width: dragR * 2, height: dragR * 2)
+                context.fill(Path(ellipseIn: rightRect), with: .color(alertColor.opacity(0.35)))
+
+                let leftPt = CGPoint(x: pt.x - aberration, y: pt.y + 1)
+                let leftRect = CGRect(x: leftPt.x - dragR, y: leftPt.y - dragR, width: dragR * 2, height: dragR * 2)
+                context.fill(Path(ellipseIn: leftRect), with: .color(cyanColor.opacity(0.35)))
+
+                // Main dot — semi-transparent, enlarged
+                let rect = CGRect(x: pt.x - dragR, y: pt.y - dragR, width: dragR * 2, height: dragR * 2)
+                context.fill(Path(ellipseIn: rect), with: .color(fillColor.opacity(0.55)))
+                context.stroke(
+                    Path(ellipseIn: rect),
+                    with: .color(strokeColor.opacity(0.7)),
+                    style: StrokeStyle(lineWidth: theme.component.strokeWidth + 1)
+                )
+
+                // Hard shadow slab (brand accent, offset)
+                let shadowRect = CGRect(
+                    x: pt.x - dragR + 4, y: pt.y - dragR + 4,
+                    width: dragR * 2, height: dragR * 2
+                )
+                context.fill(Path(roundedRect: shadowRect, cornerRadius: 0), with: .color(signalColor.opacity(0.18)))
+
+                // Inertia marker
+                if element.inertia {
+                    var inertiaPath = Path()
+                    inertiaPath.move(to: CGPoint(x: pt.x + dragR + 2, y: pt.y - 10))
+                    inertiaPath.addLine(to: CGPoint(x: pt.x + dragR + 2, y: pt.y + 10))
+                    context.stroke(
+                        inertiaPath,
+                        with: .color(strokeColor.opacity(0.5)),
+                        style: StrokeStyle(lineWidth: 2)
+                    )
+                }
+
+            } else if let glitch = glitchProgress[element.name], glitch.progress < 1.0 {
                 // === CRT GLITCH EFFECT ===
                 let p = glitch.progress
                 let primaryColor = glitch.isNew ? signalColor : alertColor
@@ -131,7 +174,7 @@ public struct ComponentDrawing {
                 }
 
             } else {
-                // === NORMAL DRAWING (no glitch) ===
+                // === NORMAL DRAWING (no glitch, no drag) ===
                 let rect = CGRect(x: pt.x - r, y: pt.y - r, width: r * 2, height: r * 2)
                 context.fill(Path(ellipseIn: rect), with: .color(fillColor))
                 context.stroke(
@@ -172,14 +215,30 @@ public struct ComponentDrawing {
         elements: [MapElement],
         theme: MapTheme,
         calc: PositionCalculator,
-        glitchProgress: [String: GlitchInfo] = [:]
+        glitchProgress: [String: GlitchInfo] = [:],
+        positionOverrides: [String: CGPoint] = [:]
     ) {
         for element in elements {
-            let pt = calc.point(visibility: element.visibility, maturity: element.maturity)
+            let pt = positionOverrides[element.name] ?? calc.point(visibility: element.visibility, maturity: element.maturity)
+            let isDragging = positionOverrides[element.name] != nil
             let isEvolved = element.evolved
             let textColor = isEvolved ? theme.component.evolvedTextColor : theme.component.textColor
 
-            if let glitch = glitchProgress[element.name], glitch.progress < 1.0 {
+            if isDragging {
+                // Drag: jittery, semi-transparent label
+                let jitterX: Double = (element.name.hashValue % 3 == 0) ? 1.5 : -1.5
+                let labelPt = CGPoint(
+                    x: pt.x + element.label.x + jitterX,
+                    y: pt.y + element.label.y
+                )
+                context.draw(
+                    Text(element.name)
+                        .font(.system(size: theme.component.fontSize, weight: theme.component.fontWeight))
+                        .foregroundStyle(textColor.opacity(0.6)),
+                    at: labelPt,
+                    anchor: .topLeading
+                )
+            } else if let glitch = glitchProgress[element.name], glitch.progress < 1.0 {
                 let p = glitch.progress
 
                 if p < 0.2 {

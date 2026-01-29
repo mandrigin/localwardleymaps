@@ -60,6 +60,12 @@ struct WardleyMapsNativeApp: App {
                 }
             }
             CommandGroup(after: .saveItem) {
+                Button("Save") {
+                    state.saveToDisk()
+                }
+                .keyboardShortcut("s")
+                .disabled(!state.hasUnsavedChanges)
+
                 Button("Export as PNG...") {
                     NotificationCenter.default.post(name: .exportPNG, object: nil)
                 }

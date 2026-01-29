@@ -9,14 +9,16 @@ public struct EvolutionLinkDrawing {
         elements: [MapElement],
         evolved: [EvolvedElement],
         theme: MapTheme,
-        calc: PositionCalculator
+        calc: PositionCalculator,
+        positionOverrides: [String: CGPoint] = [:]
     ) {
         for ev in evolved {
             // Find the original component
             guard let original = elements.first(where: { $0.name == ev.name }) else { continue }
 
-            let startPt = calc.point(visibility: original.visibility, maturity: original.maturity)
-            let endPt = calc.point(visibility: original.visibility, maturity: ev.maturity)
+            let startPt = positionOverrides[original.name] ?? calc.point(visibility: original.visibility, maturity: original.maturity)
+            let displayName = ev.override.isEmpty ? ev.name : ev.override
+            let endPt = positionOverrides[displayName] ?? calc.point(visibility: original.visibility, maturity: ev.maturity)
 
             // Dashed red line
             var path = Path()
@@ -61,7 +63,6 @@ public struct EvolutionLinkDrawing {
             )
 
             // Label for evolved
-            let displayName = ev.override.isEmpty ? ev.name : ev.override
             let labelPt = CGPoint(x: endPt.x + ev.label.x, y: endPt.y + ev.label.y)
             context.draw(
                 Text(displayName)

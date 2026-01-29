@@ -29,19 +29,25 @@ public struct ContentView: View {
                     map: state.parsedMap,
                     theme: state.currentTheme,
                     glitchProgress: glitchProgress,
-                    onComponentDrag: { element, newPosition in
+                    dragOverride: state.dragOverride,
+                    onDragChanged: { elementName, canvasPosition in
+                        state.dragOverride = (elementName: elementName, position: canvasPosition)
+                    },
+                    onDragEnded: { elementName, canvasPosition in
                         let calc = PositionCalculator()
-                        let newVis = calc.yToVisibility(newPosition.y)
-                        let newMat = calc.xToMaturity(newPosition.x)
+                        let newVis = calc.yToVisibility(canvasPosition.y)
+                        let newMat = calc.xToMaturity(canvasPosition.x)
+
                         if let updated = PositionUpdater.updatePosition(
                             in: state.mapText,
-                            componentName: element.name,
+                            componentName: elementName,
                             newVisibility: newVis,
                             newMaturity: newMat
                         ) {
                             state.mapText = updated
-                            writeBackToDisk(updated)
+                            state.hasUnsavedChanges = true
                         }
+                        state.dragOverride = nil
                     }
                 )
             }
@@ -92,14 +98,6 @@ public struct ContentView: View {
                 )
             }
         }
-    }
-
-    private func writeBackToDisk(_ text: String) {
-        guard let url = state.fileURL,
-              let data = text.data(using: .utf8) else { return }
-        let accessing = url.startAccessingSecurityScopedResource()
-        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
-        try? data.write(to: url, options: .atomic)
     }
 
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {

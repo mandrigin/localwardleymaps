@@ -12,28 +12,29 @@ public struct LinkDrawing {
         submaps: [MapElement],
         evolved: [EvolvedElement],
         theme: MapTheme,
-        calc: PositionCalculator
+        calc: PositionCalculator,
+        positionOverrides: [String: CGPoint] = [:]
     ) {
         // Build lookup: name -> point
         var nameToPoint: [String: CGPoint] = [:]
         var nameToEvolved: [String: Bool] = [:]
 
         for el in elements {
-            nameToPoint[el.name] = calc.point(visibility: el.visibility, maturity: el.maturity)
+            nameToPoint[el.name] = positionOverrides[el.name] ?? calc.point(visibility: el.visibility, maturity: el.maturity)
             nameToEvolved[el.name] = el.evolved
         }
         for a in anchors {
-            nameToPoint[a.name] = calc.point(visibility: a.visibility, maturity: a.maturity)
+            nameToPoint[a.name] = positionOverrides[a.name] ?? calc.point(visibility: a.visibility, maturity: a.maturity)
         }
         for s in submaps {
-            nameToPoint[s.name] = calc.point(visibility: s.visibility, maturity: s.maturity)
+            nameToPoint[s.name] = positionOverrides[s.name] ?? calc.point(visibility: s.visibility, maturity: s.maturity)
         }
         // Evolved elements override lookup for their override name
         for ev in evolved {
             let displayName = ev.override.isEmpty ? ev.name : ev.override
             // We need to find the original component to get its visibility
             if let original = elements.first(where: { $0.name == ev.name }) {
-                nameToPoint[displayName] = calc.point(visibility: original.visibility, maturity: ev.maturity)
+                nameToPoint[displayName] = positionOverrides[displayName] ?? calc.point(visibility: original.visibility, maturity: ev.maturity)
                 nameToEvolved[displayName] = true
             }
         }
