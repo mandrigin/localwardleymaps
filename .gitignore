@@ -22,3 +22,16 @@ frontend/.eslintcache
 
 # Beads tracking
 .beads/
+
+# Swift / SPM
+native/.build/
+native/.swiftpm/
+*.xcodeproj
+xcuserdata/
+DerivedData/
+.swiftpm/xcode/
+
+# Gas Town (added by gt)
+.runtime/
+.claude/
+.logs/
