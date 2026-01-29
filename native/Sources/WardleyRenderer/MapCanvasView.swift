@@ -10,9 +10,6 @@ public struct MapCanvasView: View {
     public let onComponentTap: ((MapElement) -> Void)?
     public let onComponentDrag: ((MapElement, CGPoint) -> Void)?
 
-    @State private var scale: CGFloat = 1.0
-    @State private var offset: CGSize = .zero
-
     public init(
         map: WardleyMap,
         theme: MapTheme,
@@ -27,44 +24,10 @@ public struct MapCanvasView: View {
         self.onComponentDrag = onComponentDrag
     }
 
-    var mapWidth: CGFloat {
-        map.presentation.size.width > 0 ? map.presentation.size.width : MapDefaults.canvasWidth
-    }
-
-    var mapHeight: CGFloat {
-        map.presentation.size.height > 0 ? map.presentation.size.height : MapDefaults.canvasHeight
-    }
-
     public var body: some View {
-        GeometryReader { geo in
-            let fitScale = geo.size.width / (mapWidth + 40)
-            let effectiveScale = fitScale * scale
-            let scaledHeight = (mapHeight + 60) * effectiveScale
-
-            ScrollView(.vertical) {
-                canvas
-                    .frame(width: mapWidth + 40, height: mapHeight + 60)
-                    .scaleEffect(effectiveScale, anchor: .topLeading)
-                    .frame(
-                        width: geo.size.width,
-                        height: max(geo.size.height, scaledHeight)
-                    )
-            }
-            .frame(width: geo.size.width, height: geo.size.height)
-            .gesture(
-                MagnifyGesture()
-                    .onChanged { value in
-                        scale = max(0.5, min(3.0, value.magnification))
-                    }
-            )
-        }
-    }
-
-    var canvas: some View {
         Canvas { context, size in
-            let calc = PositionCalculator(mapWidth: mapWidth, mapHeight: mapHeight)
+            let calc = PositionCalculator(mapWidth: size.width, mapHeight: size.height)
 
-            // 1. Grid background
             GridDrawing.draw(
                 context: &context,
                 size: size,
@@ -73,7 +36,6 @@ public struct MapCanvasView: View {
                 calc: calc
             )
 
-            // 2. Attitudes (behind everything)
             AttitudeDrawing.draw(
                 context: &context,
                 attitudes: map.attitudes,
@@ -81,7 +43,6 @@ public struct MapCanvasView: View {
                 calc: calc
             )
 
-            // 3. Pipelines
             PipelineDrawing.draw(
                 context: &context,
                 pipelines: map.pipelines,
@@ -90,7 +51,6 @@ public struct MapCanvasView: View {
                 calc: calc
             )
 
-            // 4. Links
             LinkDrawing.draw(
                 context: &context,
                 links: map.links,
@@ -102,7 +62,6 @@ public struct MapCanvasView: View {
                 calc: calc
             )
 
-            // 5. Evolution links (dashed red)
             EvolutionLinkDrawing.draw(
                 context: &context,
                 elements: map.elements,
@@ -111,7 +70,6 @@ public struct MapCanvasView: View {
                 calc: calc
             )
 
-            // 6. Components
             ComponentDrawing.drawElements(
                 context: &context,
                 elements: map.elements,
@@ -120,7 +78,6 @@ public struct MapCanvasView: View {
                 highlightedLine: highlightedLine
             )
 
-            // 7. Anchors
             ComponentDrawing.drawAnchors(
                 context: &context,
                 anchors: map.anchors,
@@ -128,7 +85,6 @@ public struct MapCanvasView: View {
                 calc: calc
             )
 
-            // 8. Submaps
             ComponentDrawing.drawSubmaps(
                 context: &context,
                 submaps: map.submaps,
@@ -136,7 +92,6 @@ public struct MapCanvasView: View {
                 calc: calc
             )
 
-            // 9. Annotations
             AnnotationDrawing.draw(
                 context: &context,
                 annotations: map.annotations,
@@ -145,7 +100,6 @@ public struct MapCanvasView: View {
                 calc: calc
             )
 
-            // 10. Notes
             NoteDrawing.drawNotes(
                 context: &context,
                 notes: map.notes,
@@ -153,7 +107,6 @@ public struct MapCanvasView: View {
                 calc: calc
             )
 
-            // 11. Accelerators
             NoteDrawing.drawAccelerators(
                 context: &context,
                 accelerators: map.accelerators,
@@ -161,7 +114,6 @@ public struct MapCanvasView: View {
                 calc: calc
             )
 
-            // 12. Methods
             MethodDrawing.draw(
                 context: &context,
                 methods: map.methods,
@@ -170,13 +122,12 @@ public struct MapCanvasView: View {
                 calc: calc
             )
 
-            // 13. Title
             if !map.title.isEmpty && map.title != "Untitled Map" {
                 context.draw(
                     Text(map.title)
                         .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(theme.stroke),
-                    at: CGPoint(x: mapWidth / 2, y: 10),
+                    at: CGPoint(x: size.width / 2, y: 10),
                     anchor: .top
                 )
             }

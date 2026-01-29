@@ -7,7 +7,7 @@ public struct PositionCalculator: Sendable {
     public let mapHeight: CGFloat
     public let padding: CGFloat
 
-    public init(mapWidth: CGFloat = 500, mapHeight: CGFloat = 600, padding: CGFloat = 20) {
+    public init(mapWidth: CGFloat = MapDefaults.canvasWidth, mapHeight: CGFloat = MapDefaults.canvasHeight, padding: CGFloat = 20) {
         self.mapWidth = mapWidth
         self.mapHeight = mapHeight
         self.padding = padding
