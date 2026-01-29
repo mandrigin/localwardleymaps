@@ -24,7 +24,8 @@ public struct ComponentDrawing {
         calc: PositionCalculator,
         highlightedLine: Int? = nil,
         glitchProgress: [String: GlitchInfo] = [:],
-        positionOverrides: [String: CGPoint] = [:]
+        positionOverrides: [String: CGPoint] = [:],
+        dragPhase: Double = 0
     ) {
         for element in elements {
             let pt = positionOverrides[element.name] ?? calc.point(visibility: element.visibility, maturity: element.maturity)
@@ -36,40 +37,66 @@ public struct ComponentDrawing {
             let r = theme.component.radius
 
             if isDragging {
-                // === DRAG EFFECT: enlarged, semi-transparent, chromatic aberration ===
-                let dragR = r * 1.5
+                // === ANIMATED DRAG EFFECT: vibrating, flickering CRT ===
+                let t = dragPhase
 
-                // Chromatic aberration ghosts (fixed offset, CRT style)
-                let aberration: CGFloat = 3.0
-                let rightPt = CGPoint(x: pt.x + aberration, y: pt.y - 1)
+                // Vibration: position jitter at ~8-12Hz
+                let vibeX = sin(t * 50) * 1.5 + sin(t * 83) * 0.5
+                let vibeY = cos(t * 37) * 1.0 + cos(t * 71) * 0.4
+                let vibePt = CGPoint(x: pt.x + vibeX, y: pt.y + vibeY)
+
+                // Pulsing radius: 1.3x to 1.6x
+                let dragR = r * (1.45 + 0.15 * sin(t * 19))
+
+                // Chromatic aberration: varying offset 1.5-4px
+                let aberration = 2.5 + 1.5 * sin(t * 13)
+
+                // Right ghost (alert/orange)
+                let rightPt = CGPoint(x: vibePt.x + aberration, y: vibePt.y - 1)
                 let rightRect = CGRect(x: rightPt.x - dragR, y: rightPt.y - dragR, width: dragR * 2, height: dragR * 2)
-                context.fill(Path(ellipseIn: rightRect), with: .color(alertColor.opacity(0.35)))
+                let ghostOpacity = 0.25 + 0.15 * sin(t * 29)
+                context.fill(Path(ellipseIn: rightRect), with: .color(alertColor.opacity(ghostOpacity)))
 
-                let leftPt = CGPoint(x: pt.x - aberration, y: pt.y + 1)
+                // Left ghost (cyan)
+                let leftPt = CGPoint(x: vibePt.x - aberration, y: vibePt.y + 1)
                 let leftRect = CGRect(x: leftPt.x - dragR, y: leftPt.y - dragR, width: dragR * 2, height: dragR * 2)
-                context.fill(Path(ellipseIn: leftRect), with: .color(cyanColor.opacity(0.35)))
+                context.fill(Path(ellipseIn: leftRect), with: .color(cyanColor.opacity(ghostOpacity)))
 
-                // Main dot — semi-transparent, enlarged
-                let rect = CGRect(x: pt.x - dragR, y: pt.y - dragR, width: dragR * 2, height: dragR * 2)
-                context.fill(Path(ellipseIn: rect), with: .color(fillColor.opacity(0.55)))
+                // Occasional bright flash (spiky sine)
+                let flashRaw = sin(t * 43)
+                if flashRaw > 0.85 {
+                    let flashIntensity = (flashRaw - 0.85) / 0.15 * 0.7
+                    let flashRect = CGRect(
+                        x: vibePt.x - dragR - 2, y: vibePt.y - dragR - 2,
+                        width: (dragR + 2) * 2, height: (dragR + 2) * 2
+                    )
+                    context.fill(Path(roundedRect: flashRect, cornerRadius: 1), with: .color(signalColor.opacity(flashIntensity)))
+                }
+
+                // Main dot — semi-transparent, flickering opacity
+                let dotOpacity = 0.45 + 0.2 * sin(t * 31) * sin(t * 7)
+                let mainRect = CGRect(x: vibePt.x - dragR, y: vibePt.y - dragR, width: dragR * 2, height: dragR * 2)
+                context.fill(Path(ellipseIn: mainRect), with: .color(fillColor.opacity(dotOpacity)))
                 context.stroke(
-                    Path(ellipseIn: rect),
-                    with: .color(strokeColor.opacity(0.7)),
+                    Path(ellipseIn: mainRect),
+                    with: .color(strokeColor.opacity(dotOpacity + 0.2)),
                     style: StrokeStyle(lineWidth: theme.component.strokeWidth + 1)
                 )
 
-                // Hard shadow slab (brand accent, offset)
+                // Hard shadow slab — flickering offset
+                let shadowOff = 3.0 + sin(t * 23) * 1.5
                 let shadowRect = CGRect(
-                    x: pt.x - dragR + 4, y: pt.y - dragR + 4,
+                    x: vibePt.x - dragR + shadowOff, y: vibePt.y - dragR + shadowOff,
                     width: dragR * 2, height: dragR * 2
                 )
-                context.fill(Path(roundedRect: shadowRect, cornerRadius: 0), with: .color(signalColor.opacity(0.18)))
+                let shadowOpacity = 0.12 + 0.08 * cos(t * 17)
+                context.fill(Path(roundedRect: shadowRect, cornerRadius: 0), with: .color(signalColor.opacity(shadowOpacity)))
 
                 // Inertia marker
                 if element.inertia {
                     var inertiaPath = Path()
-                    inertiaPath.move(to: CGPoint(x: pt.x + dragR + 2, y: pt.y - 10))
-                    inertiaPath.addLine(to: CGPoint(x: pt.x + dragR + 2, y: pt.y + 10))
+                    inertiaPath.move(to: CGPoint(x: vibePt.x + dragR + 2, y: vibePt.y - 10))
+                    inertiaPath.addLine(to: CGPoint(x: vibePt.x + dragR + 2, y: vibePt.y + 10))
                     context.stroke(
                         inertiaPath,
                         with: .color(strokeColor.opacity(0.5)),
@@ -216,7 +243,8 @@ public struct ComponentDrawing {
         theme: MapTheme,
         calc: PositionCalculator,
         glitchProgress: [String: GlitchInfo] = [:],
-        positionOverrides: [String: CGPoint] = [:]
+        positionOverrides: [String: CGPoint] = [:],
+        dragPhase: Double = 0
     ) {
         for element in elements {
             let pt = positionOverrides[element.name] ?? calc.point(visibility: element.visibility, maturity: element.maturity)
@@ -225,16 +253,19 @@ public struct ComponentDrawing {
             let textColor = isEvolved ? theme.component.evolvedTextColor : theme.component.textColor
 
             if isDragging {
-                // Drag: jittery, semi-transparent label
-                let jitterX: Double = (element.name.hashValue % 3 == 0) ? 1.5 : -1.5
+                // Drag: animated jittery label with flickering opacity
+                let t = dragPhase
+                let jitterX = sin(t * 50) * 1.5 + sin(t * 83) * 0.5
+                let jitterY = cos(t * 37) * 1.0 + cos(t * 71) * 0.4
+                let labelOpacity = 0.45 + 0.2 * sin(t * 31) * sin(t * 7)
                 let labelPt = CGPoint(
                     x: pt.x + element.label.x + jitterX,
-                    y: pt.y + element.label.y
+                    y: pt.y + element.label.y + jitterY
                 )
                 context.draw(
                     Text(element.name)
                         .font(.system(size: theme.component.fontSize, weight: theme.component.fontWeight))
-                        .foregroundStyle(textColor.opacity(0.6)),
+                        .foregroundStyle(textColor.opacity(labelOpacity + 0.15)),
                     at: labelPt,
                     anchor: .topLeading
                 )

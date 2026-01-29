@@ -9,6 +9,7 @@ public struct MapCanvasView: View {
     public let highlightedLine: Int?
     public let glitchProgress: [String: GlitchInfo]
     public let dragOverride: (elementName: String, position: CGPoint)?
+    public let dragPhase: Double
     public let onDragChanged: ((_ elementName: String, _ canvasPosition: CGPoint) -> Void)?
     public let onDragEnded: ((_ elementName: String, _ canvasPosition: CGPoint, _ canvasSize: CGSize) -> Void)?
 
@@ -21,6 +22,7 @@ public struct MapCanvasView: View {
         highlightedLine: Int? = nil,
         glitchProgress: [String: GlitchInfo] = [:],
         dragOverride: (elementName: String, position: CGPoint)? = nil,
+        dragPhase: Double = 0,
         onDragChanged: ((_ elementName: String, _ canvasPosition: CGPoint) -> Void)? = nil,
         onDragEnded: ((_ elementName: String, _ canvasPosition: CGPoint, _ canvasSize: CGSize) -> Void)? = nil
     ) {
@@ -29,14 +31,28 @@ public struct MapCanvasView: View {
         self.highlightedLine = highlightedLine
         self.glitchProgress = glitchProgress
         self.dragOverride = dragOverride
+        self.dragPhase = dragPhase
         self.onDragChanged = onDragChanged
         self.onDragEnded = onDragEnded
+    }
+
+    /// Estimated label bounding rect for hit-testing (topLeading anchor).
+    private func labelRect(center pt: CGPoint, labelX: Double, labelY: Double, name: String, fontSize: CGFloat) -> CGRect {
+        let w = CGFloat(name.count) * fontSize * 0.6
+        let h = fontSize * 1.4
+        let padding: CGFloat = 4
+        return CGRect(
+            x: pt.x + labelX - padding,
+            y: pt.y + labelY - padding,
+            width: w + padding * 2,
+            height: h + padding * 2
+        )
     }
 
     private func handleCanvasDragChanged(_ value: DragGesture.Value, size: CGSize) {
         let calc = PositionCalculator(mapWidth: size.width, mapHeight: size.height)
 
-        // First touch: hit-test to find nearest element
+        // First touch: hit-test to find nearest element (dot OR label)
         if dragElementName == nil {
             let hitRadius: CGFloat = theme.component.radius + 8
             var bestDist: CGFloat = .infinity
@@ -44,12 +60,27 @@ public struct MapCanvasView: View {
 
             for element in map.elements {
                 let pt = calc.point(visibility: element.visibility, maturity: element.maturity)
+
+                // Hit-test dot
                 let dx = pt.x - value.startLocation.x
                 let dy = pt.y - value.startLocation.y
                 let dist = sqrt(dx * dx + dy * dy)
                 if dist < hitRadius && dist < bestDist {
                     bestDist = dist
                     bestName = element.name
+                }
+
+                // Hit-test label
+                let lr = labelRect(center: pt, labelX: element.label.x, labelY: element.label.y, name: element.name, fontSize: theme.component.fontSize)
+                if lr.contains(value.startLocation) {
+                    let labelDist = hypot(
+                        lr.midX - value.startLocation.x,
+                        lr.midY - value.startLocation.y
+                    )
+                    if labelDist < bestDist {
+                        bestDist = labelDist
+                        bestName = element.name
+                    }
                 }
             }
             for anchor in map.anchors {
@@ -149,7 +180,8 @@ public struct MapCanvasView: View {
                 calc: calc,
                 highlightedLine: highlightedLine,
                 glitchProgress: glitchProgress,
-                positionOverrides: posOverrides
+                positionOverrides: posOverrides,
+                dragPhase: dragPhase
             )
 
             ComponentDrawing.drawAnchorDots(
@@ -203,7 +235,8 @@ public struct MapCanvasView: View {
                 theme: theme,
                 calc: calc,
                 glitchProgress: glitchProgress,
-                positionOverrides: posOverrides
+                positionOverrides: posOverrides,
+                dragPhase: dragPhase
             )
 
             ComponentDrawing.drawAnchorLabels(

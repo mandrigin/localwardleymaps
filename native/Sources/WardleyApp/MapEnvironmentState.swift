@@ -29,7 +29,7 @@ public final class MapEnvironmentState {
 
     public var glitchEntries: [GlitchEntry] = []
 
-    public var isGlitching: Bool { !glitchEntries.isEmpty }
+    public var isGlitching: Bool { !glitchEntries.isEmpty || dragOverride != nil }
 
     /// Remove entries whose animation has completed (older than 0.8s).
     public func cleanupExpiredGlitches(at date: Date) {

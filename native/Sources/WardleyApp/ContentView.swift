@@ -30,6 +30,7 @@ public struct ContentView: View {
                     theme: state.currentTheme,
                     glitchProgress: glitchProgress,
                     dragOverride: state.dragOverride,
+                    dragPhase: state.dragOverride != nil ? timeline.date.timeIntervalSinceReferenceDate : 0,
                     onDragChanged: { elementName, canvasPosition in
                         state.dragOverride = (elementName: elementName, position: canvasPosition)
                     },
