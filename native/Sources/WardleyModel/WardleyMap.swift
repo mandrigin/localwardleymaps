@@ -546,13 +546,13 @@ public struct LabelOffset: Sendable, Equatable {
     public var x: Double
     public var y: Double
 
-    public init(x: Double = 5, y: Double = -10) {
+    public init(x: Double = 12, y: Double = -10) {
         self.x = x
         self.y = y
     }
 
-    public static let `default` = LabelOffset(x: 5, y: -10)
-    public static let increased = LabelOffset(x: 5, y: -20)
+    public static let `default` = LabelOffset(x: 12, y: -10)
+    public static let increased = LabelOffset(x: 12, y: -20)
 }
 
 // MARK: - Parse Error
