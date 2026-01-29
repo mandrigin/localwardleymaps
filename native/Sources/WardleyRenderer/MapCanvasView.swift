@@ -46,12 +46,13 @@ public struct MapCanvasView: View {
             ScrollView([.horizontal, .vertical]) {
                 canvas
                     .frame(width: mapWidth + 40, height: mapHeight + 60)
-                    .scaleEffect(effectiveScale)
+                    .scaleEffect(effectiveScale, anchor: .topLeading)
                     .frame(
-                        width: (mapWidth + 40) * effectiveScale,
-                        height: (mapHeight + 60) * effectiveScale
+                        width: max(geo.size.width, (mapWidth + 40) * effectiveScale),
+                        height: max(geo.size.height, (mapHeight + 60) * effectiveScale)
                     )
             }
+            .frame(width: geo.size.width, height: geo.size.height)
             .gesture(
                 MagnifyGesture()
                     .onChanged { value in

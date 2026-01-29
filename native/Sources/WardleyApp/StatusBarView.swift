@@ -46,17 +46,6 @@ public struct StatusBarView: View {
 
             Spacer()
 
-            // Theme picker
-            Picker("Theme", selection: $state.currentThemeName) {
-                Text("Plain").tag("plain")
-                Text("Wardley").tag("wardley")
-                Text("Colour").tag("colour")
-                Text("Handwritten").tag("handwritten")
-                Text("Dark").tag("dark")
-            }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 300)
-
             // Actions
             Button("Export PNG", systemImage: "square.and.arrow.up") {
                 onExport()

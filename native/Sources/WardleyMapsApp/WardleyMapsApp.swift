@@ -49,13 +49,6 @@ struct WardleyMapsNativeApp: App {
                 }
                 .keyboardShortcut("e")
             }
-            CommandMenu("Theme") {
-                ForEach(["plain", "wardley", "colour", "handwritten", "dark"], id: \.self) { name in
-                    Button(name.capitalized) {
-                        state.currentThemeName = name
-                    }
-                }
-            }
         }
     }
 
