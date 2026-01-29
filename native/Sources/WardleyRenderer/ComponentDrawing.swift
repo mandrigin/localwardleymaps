@@ -37,66 +37,61 @@ public struct ComponentDrawing {
             let r = theme.component.radius
 
             if isDragging {
-                // === ANIMATED DRAG EFFECT: vibrating, flickering CRT ===
+                // === DRAG EFFECT: mostly clean signal, rare noise bursts ===
                 let t = dragPhase
+                let dragR = r * 1.5
 
-                // Vibration: position jitter at ~8-12Hz
-                let vibeX = sin(t * 50) * 1.5 + sin(t * 83) * 0.5
-                let vibeY = cos(t * 37) * 1.0 + cos(t * 71) * 0.4
-                let vibePt = CGPoint(x: pt.x + vibeX, y: pt.y + vibeY)
+                // Noise gate: two incommensurate sines multiplied — only spikes
+                // above threshold produce a glitch. ~15% of frames are "noisy".
+                let noiseRaw = sin(t * 17.3) * sin(t * 41.7)
+                let noisy = noiseRaw > 0.6
+                let noiseAmt = noisy ? (noiseRaw - 0.6) / 0.4 : 0.0  // 0..1 when active
 
-                // Pulsing radius: 1.3x to 1.6x
-                let dragR = r * (1.45 + 0.15 * sin(t * 19))
+                // Position: stable, with rare jitter
+                let jX = noisy ? sin(t * 83) * 2.0 * noiseAmt : 0.0
+                let jY = noisy ? cos(t * 71) * 1.5 * noiseAmt : 0.0
+                let drawPt = CGPoint(x: pt.x + jX, y: pt.y + jY)
 
-                // Chromatic aberration: varying offset 1.5-4px
-                let aberration = 2.5 + 1.5 * sin(t * 13)
-
-                // Right ghost (alert/orange)
-                let rightPt = CGPoint(x: vibePt.x + aberration, y: vibePt.y - 1)
-                let rightRect = CGRect(x: rightPt.x - dragR, y: rightPt.y - dragR, width: dragR * 2, height: dragR * 2)
-                let ghostOpacity = 0.25 + 0.15 * sin(t * 29)
-                context.fill(Path(ellipseIn: rightRect), with: .color(alertColor.opacity(ghostOpacity)))
-
-                // Left ghost (cyan)
-                let leftPt = CGPoint(x: vibePt.x - aberration, y: vibePt.y + 1)
-                let leftRect = CGRect(x: leftPt.x - dragR, y: leftPt.y - dragR, width: dragR * 2, height: dragR * 2)
-                context.fill(Path(ellipseIn: leftRect), with: .color(cyanColor.opacity(ghostOpacity)))
-
-                // Occasional bright flash (spiky sine)
-                let flashRaw = sin(t * 43)
-                if flashRaw > 0.85 {
-                    let flashIntensity = (flashRaw - 0.85) / 0.15 * 0.7
-                    let flashRect = CGRect(
-                        x: vibePt.x - dragR - 2, y: vibePt.y - dragR - 2,
-                        width: (dragR + 2) * 2, height: (dragR + 2) * 2
-                    )
-                    context.fill(Path(roundedRect: flashRect, cornerRadius: 1), with: .color(signalColor.opacity(flashIntensity)))
+                // Chromatic aberration: only during noise
+                if noisy {
+                    let ab = 3.0 * noiseAmt
+                    let rRect = CGRect(x: drawPt.x + ab - dragR, y: drawPt.y - 1 - dragR, width: dragR * 2, height: dragR * 2)
+                    context.fill(Path(ellipseIn: rRect), with: .color(alertColor.opacity(0.3 * noiseAmt)))
+                    let lRect = CGRect(x: drawPt.x - ab - dragR, y: drawPt.y + 1 - dragR, width: dragR * 2, height: dragR * 2)
+                    context.fill(Path(ellipseIn: lRect), with: .color(cyanColor.opacity(0.3 * noiseAmt)))
                 }
 
-                // Main dot — semi-transparent, flickering opacity
-                let dotOpacity = 0.45 + 0.2 * sin(t * 31) * sin(t * 7)
-                let mainRect = CGRect(x: vibePt.x - dragR, y: vibePt.y - dragR, width: dragR * 2, height: dragR * 2)
+                // Rare flash: separate gate, ~5% of frames
+                let flashGate = sin(t * 53.1) * sin(t * 29.7)
+                if flashGate > 0.8 {
+                    let fi = (flashGate - 0.8) / 0.2 * 0.5
+                    let fRect = CGRect(x: drawPt.x - dragR - 2, y: drawPt.y - dragR - 2, width: (dragR + 2) * 2, height: (dragR + 2) * 2)
+                    context.fill(Path(roundedRect: fRect, cornerRadius: 1), with: .color(signalColor.opacity(fi)))
+                }
+
+                // Main dot — stable opacity with rare dips
+                let dotOpacity = noisy ? 0.45 + 0.15 * (1.0 - noiseAmt) : 0.6
+                let mainRect = CGRect(x: drawPt.x - dragR, y: drawPt.y - dragR, width: dragR * 2, height: dragR * 2)
                 context.fill(Path(ellipseIn: mainRect), with: .color(fillColor.opacity(dotOpacity)))
                 context.stroke(
                     Path(ellipseIn: mainRect),
-                    with: .color(strokeColor.opacity(dotOpacity + 0.2)),
+                    with: .color(strokeColor.opacity(dotOpacity + 0.15)),
                     style: StrokeStyle(lineWidth: theme.component.strokeWidth + 1)
                 )
 
-                // Hard shadow slab — flickering offset
-                let shadowOff = 3.0 + sin(t * 23) * 1.5
+                // Shadow slab — steady with noise wobble
+                let shadowOff = noisy ? 4.0 + sin(t * 23) * 1.5 * noiseAmt : 4.0
                 let shadowRect = CGRect(
-                    x: vibePt.x - dragR + shadowOff, y: vibePt.y - dragR + shadowOff,
+                    x: drawPt.x - dragR + shadowOff, y: drawPt.y - dragR + shadowOff,
                     width: dragR * 2, height: dragR * 2
                 )
-                let shadowOpacity = 0.12 + 0.08 * cos(t * 17)
-                context.fill(Path(roundedRect: shadowRect, cornerRadius: 0), with: .color(signalColor.opacity(shadowOpacity)))
+                context.fill(Path(roundedRect: shadowRect, cornerRadius: 0), with: .color(signalColor.opacity(0.15)))
 
                 // Inertia marker
                 if element.inertia {
                     var inertiaPath = Path()
-                    inertiaPath.move(to: CGPoint(x: vibePt.x + dragR + 2, y: vibePt.y - 10))
-                    inertiaPath.addLine(to: CGPoint(x: vibePt.x + dragR + 2, y: vibePt.y + 10))
+                    inertiaPath.move(to: CGPoint(x: drawPt.x + dragR + 2, y: drawPt.y - 10))
+                    inertiaPath.addLine(to: CGPoint(x: drawPt.x + dragR + 2, y: drawPt.y + 10))
                     context.stroke(
                         inertiaPath,
                         with: .color(strokeColor.opacity(0.5)),
@@ -253,19 +248,22 @@ public struct ComponentDrawing {
             let textColor = isEvolved ? theme.component.evolvedTextColor : theme.component.textColor
 
             if isDragging {
-                // Drag: animated jittery label with flickering opacity
+                // Drag label: mostly stable, rare noise jitter
                 let t = dragPhase
-                let jitterX = sin(t * 50) * 1.5 + sin(t * 83) * 0.5
-                let jitterY = cos(t * 37) * 1.0 + cos(t * 71) * 0.4
-                let labelOpacity = 0.45 + 0.2 * sin(t * 31) * sin(t * 7)
+                let noiseRaw = sin(t * 17.3) * sin(t * 41.7)
+                let noisy = noiseRaw > 0.6
+                let noiseAmt = noisy ? (noiseRaw - 0.6) / 0.4 : 0.0
+                let jX = noisy ? sin(t * 83) * 2.0 * noiseAmt : 0.0
+                let jY = noisy ? cos(t * 71) * 1.5 * noiseAmt : 0.0
+                let labelOpacity = noisy ? 0.5 + 0.15 * (1.0 - noiseAmt) : 0.65
                 let labelPt = CGPoint(
-                    x: pt.x + element.label.x + jitterX,
-                    y: pt.y + element.label.y + jitterY
+                    x: pt.x + element.label.x + jX,
+                    y: pt.y + element.label.y + jY
                 )
                 context.draw(
                     Text(element.name)
                         .font(.system(size: theme.component.fontSize, weight: theme.component.fontWeight))
-                        .foregroundStyle(textColor.opacity(labelOpacity + 0.15)),
+                        .foregroundStyle(textColor.opacity(labelOpacity)),
                     at: labelPt,
                     anchor: .topLeading
                 )
