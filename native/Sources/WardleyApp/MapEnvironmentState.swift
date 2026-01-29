@@ -4,7 +4,8 @@ import WardleyModel
 import WardleyParser
 import WardleyTheme
 
-/// Central observable state for the entire map editing environment.
+/// Central observable state for the map preview environment.
+@MainActor
 @Observable
 public final class MapEnvironmentState {
     public var mapText: String {
@@ -20,11 +21,11 @@ public final class MapEnvironmentState {
         didSet { updateTheme() }
     }
     public var currentTheme: MapTheme
-    public var highlightedLine: Int?
-    public var scrollToLine: Int?
-    public var isDirty: Bool = false
+    public var fileURL: URL?
+    public var lastModified: Date?
 
     private let parser = WardleyParser()
+    private let fileMonitor = FileMonitorService()
 
     public init(text: String = "") {
         self.mapText = text
@@ -41,10 +42,41 @@ public final class MapEnvironmentState {
         }
     }
 
+    /// Open and start monitoring a file.
+    public func openFile(_ url: URL) {
+        fileURL = url
+        reloadFromDisk()
+        startMonitoring()
+    }
+
+    /// Re-read the file from disk.
+    public func reloadFromDisk() {
+        guard let url = fileURL else { return }
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+        guard let data = try? Data(contentsOf: url),
+              let text = String(data: data, encoding: .utf8) else { return }
+        mapText = text
+        lastModified = (try? FileManager.default.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date ?? Date()
+    }
+
+    /// Stop monitoring the current file.
+    public func stopMonitoring() {
+        fileMonitor.stop()
+    }
+
+    // MARK: - Private
+
+    private func startMonitoring() {
+        guard let url = fileURL else { return }
+        fileMonitor.onFileChanged = { [weak self] in
+            self?.reloadFromDisk()
+        }
+        fileMonitor.watch(url: url)
+    }
+
     public func reparseMap() {
         parsedMap = parser.parse(mapText)
-        isDirty = true
-        // Auto-detect theme from DSL style directive
         let styleName = parsedMap.presentation.style
         if !styleName.isEmpty && styleName != currentThemeName {
             currentThemeName = styleName
@@ -57,15 +89,5 @@ public final class MapEnvironmentState {
 
     public var errorLines: Set<Int> {
         Set(parsedMap.errors.map(\.line))
-    }
-
-    public func highlightComponent(_ element: MapElement) {
-        highlightedLine = element.line
-        scrollToLine = element.line
-    }
-
-    public func clearHighlight() {
-        highlightedLine = nil
-        scrollToLine = nil
     }
 }

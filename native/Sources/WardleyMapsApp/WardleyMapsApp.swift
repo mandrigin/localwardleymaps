@@ -5,16 +5,42 @@ import WardleyTheme
 
 @main
 struct WardleyMapsNativeApp: App {
+    @State private var state = MapEnvironmentState()
+    @State private var recentFiles = RecentFilesService()
+    @State private var isPreviewing = false
+
     var body: some Scene {
-        DocumentGroup(newDocument: WardleyMapDocument()) { file in
-            DocumentContentView(document: file.$document)
+        WindowGroup {
+            Group {
+                if isPreviewing {
+                    ContentView(
+                        state: state,
+                        recentFiles: recentFiles,
+                        onStop: {
+                            state.stopMonitoring()
+                            isPreviewing = false
+                        }
+                    )
+                } else {
+                    WelcomeView(
+                        state: state,
+                        recentFiles: recentFiles,
+                        onFileOpened: { url in
+                            openAndMonitor(url)
+                        }
+                    )
+                }
+            }
+            .onAppear {
+                handleCLIArguments()
+            }
         }
         .commands {
             CommandGroup(replacing: .newItem) {
-                Button("New Map") {
-                    NSDocumentController.shared.newDocument(nil)
+                Button("Open...") {
+                    openFilePanel()
                 }
-                .keyboardShortcut("n")
+                .keyboardShortcut("o")
             }
             CommandGroup(after: .saveItem) {
                 Button("Export as PNG...") {
@@ -25,55 +51,39 @@ struct WardleyMapsNativeApp: App {
             CommandMenu("Theme") {
                 ForEach(["plain", "wardley", "colour", "handwritten", "dark"], id: \.self) { name in
                     Button(name.capitalized) {
-                        NotificationCenter.default.post(
-                            name: .changeTheme,
-                            object: name
-                        )
+                        state.currentThemeName = name
                     }
                 }
             }
         }
     }
-}
 
-/// Wrapper view that bridges DocumentGroup's Binding<WardleyMapDocument> to MapEnvironmentState
-struct DocumentContentView: View {
-    @Binding var document: WardleyMapDocument
-    @State private var state: MapEnvironmentState
-
-    init(document: Binding<WardleyMapDocument>) {
-        self._document = document
-        self._state = State(initialValue: MapEnvironmentState(text: document.wrappedValue.text))
+    private func openAndMonitor(_ url: URL) {
+        recentFiles.add(url)
+        state.openFile(url)
+        isPreviewing = true
     }
 
-    var body: some View {
-        ContentView(state: state)
-            .onChange(of: state.mapText) { _, newValue in
-                document.text = newValue
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .exportPNG)) { _ in
-                exportPNG()
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .changeTheme)) { notification in
-                if let name = notification.object as? String {
-                    state.currentThemeName = name
-                }
-            }
-            .frame(minWidth: 800, minHeight: 600)
-    }
-
-    private func exportPNG() {
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.png]
-        panel.nameFieldStringValue = "\(state.parsedMap.title).png"
+    private func openFilePanel() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.plainText]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
-            Task { @MainActor in
-                _ = ExportService.savePNG(
-                    map: state.parsedMap,
-                    theme: state.currentTheme,
-                    to: url
-                )
+            openAndMonitor(url)
+        }
+    }
+
+    private func handleCLIArguments() {
+        let args = CommandLine.arguments
+        // Skip first arg (executable path). Look for a file path argument.
+        for arg in args.dropFirst() {
+            if arg.hasPrefix("-") { continue }
+            let url = URL(fileURLWithPath: arg)
+            if FileManager.default.fileExists(atPath: url.path) {
+                openAndMonitor(url)
+                return
             }
         }
     }

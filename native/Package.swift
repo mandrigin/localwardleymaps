@@ -38,13 +38,6 @@ let package = Package(
             path: "Sources/WardleyRenderer"
         ),
 
-        // NSTextView wrapper with syntax highlighting
-        .target(
-            name: "WardleyEditor",
-            dependencies: ["WardleyModel"],
-            path: "Sources/WardleyEditor"
-        ),
-
         // State management, views, services
         .target(
             name: "WardleyApp",
@@ -53,7 +46,6 @@ let package = Package(
                 "WardleyParser",
                 "WardleyTheme",
                 "WardleyRenderer",
-                "WardleyEditor",
             ],
             path: "Sources/WardleyApp"
         ),

@@ -1,97 +1,102 @@
 import SwiftUI
-import WardleyEditor
 import WardleyModel
 import WardleyRenderer
 import WardleyTheme
+import UniformTypeIdentifiers
 
-/// Main content view with split editor and canvas.
+/// Full-window preview of a monitored Wardley Map file.
 public struct ContentView: View {
     @Bindable var state: MapEnvironmentState
+    var recentFiles: RecentFilesService
+    var onStop: () -> Void
 
-    public init(state: MapEnvironmentState) {
+    public init(
+        state: MapEnvironmentState,
+        recentFiles: RecentFilesService,
+        onStop: @escaping () -> Void
+    ) {
         self.state = state
+        self.recentFiles = recentFiles
+        self.onStop = onStop
     }
 
     public var body: some View {
-        HSplitView {
-            // Left: Editor
-            VStack(spacing: 0) {
-                editorHeader
-                WardleyEditorView(
-                    text: $state.mapText,
-                    highlightedLine: state.highlightedLine,
-                    errorLines: state.errorLines,
-                    onTextChange: { _ in
-                        state.isDirty = true
-                    },
-                    scrollToLine: state.scrollToLine
-                )
-            }
-            .frame(minWidth: 250, idealWidth: 350)
+        VStack(spacing: 0) {
+            // Full canvas
+            MapCanvasView(
+                map: state.parsedMap,
+                theme: state.currentTheme,
+                onComponentDrag: { element, newPosition in
+                    let calc = PositionCalculator()
+                    let newVis = calc.yToVisibility(newPosition.y)
+                    let newMat = calc.xToMaturity(newPosition.x)
+                    if let updated = PositionUpdater.updatePosition(
+                        in: state.mapText,
+                        componentName: element.name,
+                        newVisibility: newVis,
+                        newMaturity: newMat
+                    ) {
+                        state.mapText = updated
+                        writeBackToDisk(updated)
+                    }
+                }
+            )
+            .background(state.currentTheme.containerBackground)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            // Right: Canvas
-            VStack(spacing: 0) {
-                canvasHeader
-                MapCanvasView(
+            // Status bar
+            StatusBarView(
+                state: state,
+                onExport: exportPNG,
+                onStop: {
+                    state.stopMonitoring()
+                    onStop()
+                },
+                onReload: {
+                    state.reloadFromDisk()
+                }
+            )
+        }
+        .onDrop(of: [.fileURL], isTargeted: nil) { providers in
+            handleDrop(providers)
+        }
+        .frame(minWidth: 600, minHeight: 400)
+    }
+
+    private func exportPNG() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.png]
+        panel.nameFieldStringValue = "\(state.parsedMap.title).png"
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+            Task { @MainActor in
+                _ = ExportService.savePNG(
                     map: state.parsedMap,
                     theme: state.currentTheme,
-                    highlightedLine: state.highlightedLine,
-                    onComponentTap: { element in
-                        state.highlightComponent(element)
-                    },
-                    onComponentDrag: { element, newPosition in
-                        let calc = PositionCalculator()
-                        let newVis = calc.yToVisibility(newPosition.y)
-                        let newMat = calc.xToMaturity(newPosition.x)
-                        if let updated = PositionUpdater.updatePosition(
-                            in: state.mapText,
-                            componentName: element.name,
-                            newVisibility: newVis,
-                            newMaturity: newMat
-                        ) {
-                            state.mapText = updated
-                        }
-                    }
+                    to: url
                 )
-                .background(state.currentTheme.containerBackground)
             }
-            .frame(minWidth: 300, idealWidth: 500)
         }
     }
 
-    private var editorHeader: some View {
-        HStack {
-            Text("Editor")
-                .font(.headline)
-            Spacer()
-            if !state.parsedMap.errors.isEmpty {
-                Label("\(state.parsedMap.errors.count) error(s)", systemImage: "exclamationmark.triangle")
-                    .foregroundStyle(.red)
-                    .font(.caption)
-            }
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(.bar)
+    private func writeBackToDisk(_ text: String) {
+        guard let url = state.fileURL,
+              let data = text.data(using: .utf8) else { return }
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+        try? data.write(to: url, options: .atomic)
     }
 
-    private var canvasHeader: some View {
-        HStack {
-            Text(state.parsedMap.title)
-                .font(.headline)
-            Spacer()
-            Picker("Theme", selection: $state.currentThemeName) {
-                Text("Plain").tag("plain")
-                Text("Wardley").tag("wardley")
-                Text("Colour").tag("colour")
-                Text("Handwritten").tag("handwritten")
-                Text("Dark").tag("dark")
+    private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
+        guard let provider = providers.first else { return false }
+        provider.loadItem(forTypeIdentifier: "public.file-url", options: nil) { data, _ in
+            guard let data = data as? Data,
+                  let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
+            Task { @MainActor in
+                recentFiles.add(url)
+                state.openFile(url)
             }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 300)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(.bar)
+        return true
     }
 }
