@@ -78,13 +78,19 @@ public struct ComponentDrawing {
         for anchor in anchors {
             let pt = calc.point(visibility: anchor.visibility, maturity: anchor.maturity)
 
+            // Label above the point, centered horizontally
             context.draw(
                 Text(anchor.name)
                     .font(.system(size: theme.anchor.fontSize, weight: .bold))
                     .foregroundStyle(theme.component.textColor),
-                at: pt,
-                anchor: .leading
+                at: CGPoint(x: pt.x, y: pt.y - 12),
+                anchor: .bottom
             )
+
+            // Small marker dot at the point
+            let r: CGFloat = 3
+            let dot = CGRect(x: pt.x - r, y: pt.y - r, width: r * 2, height: r * 2)
+            context.fill(Path(ellipseIn: dot), with: .color(theme.component.stroke))
         }
     }
 
