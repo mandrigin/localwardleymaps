@@ -19,6 +19,13 @@ bundle_app() {
 
     cp "${bin_path}/${APP_NAME}" "${macos}/${APP_NAME}"
 
+    # Generate icon if needed, copy into bundle
+    if [ ! -f Resources/AppIcon.icns ]; then
+        echo "Generating app icon..."
+        swift gen-icon.swift Resources/AppIcon.icns
+    fi
+    cp Resources/AppIcon.icns "${resources}/AppIcon.icns"
+
     cat > "${contents}/Info.plist" << PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -28,6 +35,8 @@ bundle_app() {
     <string>${APP_NAME}</string>
     <key>CFBundleIdentifier</key>
     <string>${BUNDLE_ID}</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleName</key>
     <string>Wardley Maps</string>
     <key>CFBundlePackageType</key>

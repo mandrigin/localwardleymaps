@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import UniformTypeIdentifiers
 import WardleyApp
 import WardleyModel
@@ -42,6 +43,21 @@ struct WardleyMapsNativeApp: App {
                     openFilePanel()
                 }
                 .keyboardShortcut("o")
+
+                Menu("Open Recent") {
+                    ForEach(recentFiles.recentFiles, id: \.self) { url in
+                        Button(url.lastPathComponent) {
+                            openAndMonitor(url)
+                        }
+                    }
+
+                    if !recentFiles.recentFiles.isEmpty {
+                        Divider()
+                        Button("Clear Recents") {
+                            recentFiles.clear()
+                        }
+                    }
+                }
             }
             CommandGroup(after: .saveItem) {
                 Button("Export as PNG...") {
@@ -54,6 +70,7 @@ struct WardleyMapsNativeApp: App {
 
     private func openAndMonitor(_ url: URL) {
         recentFiles.add(url)
+        NSDocumentController.shared.noteNewRecentDocumentURL(url)
         state.openFile(url)
         isPreviewing = true
     }
@@ -71,7 +88,6 @@ struct WardleyMapsNativeApp: App {
 
     private func handleCLIArguments() {
         let args = CommandLine.arguments
-        // Skip first arg (executable path). Look for a file path argument.
         for arg in args.dropFirst() {
             if arg.hasPrefix("-") { continue }
             let url = URL(fileURLWithPath: arg)
@@ -83,9 +99,6 @@ struct WardleyMapsNativeApp: App {
     }
 }
 
-// MARK: - Notification Names
-
 extension Notification.Name {
     static let exportPNG = Notification.Name("exportPNG")
-    static let changeTheme = Notification.Name("changeTheme")
 }
