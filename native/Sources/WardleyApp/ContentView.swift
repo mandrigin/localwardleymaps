@@ -25,10 +25,13 @@ public struct ContentView: View {
             // Full canvas wrapped in TimelineView for glitch animation
             TimelineView(.animation(minimumInterval: 1.0/60, paused: !state.isGlitching)) { timeline in
                 let glitchProgress = computeGlitchProgress(at: timeline.date)
+                let linkGlitch = computeLinkGlitchProgress(at: timeline.date)
                 MapCanvasView(
                     map: state.parsedMap,
                     theme: state.currentTheme,
                     glitchProgress: glitchProgress,
+                    linkGlitchProgress: linkGlitch.progress,
+                    ghostLinks: linkGlitch.ghosts,
                     dragOverride: state.dragOverride,
                     dragPhase: state.dragOverride != nil ? timeline.date.timeIntervalSinceReferenceDate : 0,
                     onDragChanged: { elementName, canvasPosition in
@@ -83,6 +86,21 @@ public struct ContentView: View {
             result[entry.elementName] = GlitchInfo(progress: progress, isNew: entry.isNew)
         }
         return result
+    }
+
+    private func computeLinkGlitchProgress(at date: Date) -> (progress: [LinkID: LinkGlitchInfo], ghosts: [MapLink]) {
+        state.cleanupExpiredLinkGlitches(at: date)
+        var progress: [LinkID: LinkGlitchInfo] = [:]
+        var ghosts: [MapLink] = []
+        for entry in state.linkGlitchEntries {
+            let elapsed = date.timeIntervalSince(entry.startTime)
+            let p = min(max(elapsed / LinkGlitchEntry.duration, 0), 1)
+            progress[entry.linkID] = LinkGlitchInfo(progress: p, isNew: entry.isNew)
+            if let ghost = entry.ghostLink {
+                ghosts.append(ghost)
+            }
+        }
+        return (progress, ghosts)
     }
 
     private func exportPNG() {

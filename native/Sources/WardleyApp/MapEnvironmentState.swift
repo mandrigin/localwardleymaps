@@ -28,14 +28,23 @@ public final class MapEnvironmentState {
     // MARK: - Glitch Animation State
 
     public var glitchEntries: [GlitchEntry] = []
+    public var linkGlitchEntries: [LinkGlitchEntry] = []
 
-    public var isGlitching: Bool { !glitchEntries.isEmpty || dragOverride != nil }
+    public var isGlitching: Bool { !glitchEntries.isEmpty || !linkGlitchEntries.isEmpty || dragOverride != nil }
 
     /// Remove entries whose animation has completed (older than 0.8s).
     public func cleanupExpiredGlitches(at date: Date) {
         guard glitchEntries.contains(where: { date.timeIntervalSince($0.startTime) >= GlitchEntry.duration }) else { return }
         glitchEntries.removeAll { entry in
             date.timeIntervalSince(entry.startTime) >= GlitchEntry.duration
+        }
+    }
+
+    /// Remove link glitch entries whose animation has completed.
+    public func cleanupExpiredLinkGlitches(at date: Date) {
+        guard linkGlitchEntries.contains(where: { date.timeIntervalSince($0.startTime) >= LinkGlitchEntry.duration }) else { return }
+        linkGlitchEntries.removeAll { entry in
+            date.timeIntervalSince(entry.startTime) >= LinkGlitchEntry.duration
         }
     }
 
@@ -117,6 +126,10 @@ public final class MapEnvironmentState {
             uniquingKeysWith: { first, _ in first }
         )
 
+        // Snapshot old links for diff
+        let oldLinks = parsedMap.links
+        let oldLinkIDs = Set(oldLinks.map { LinkID(start: $0.start, end: $0.end) })
+
         parsedMap = parser.parse(mapText)
         let styleName = parsedMap.presentation.style
         if !styleName.isEmpty && styleName != currentThemeName {
@@ -146,6 +159,34 @@ public final class MapEnvironmentState {
                     isNew: true
                 ))
             }
+        }
+
+        // Diff: detect added and removed links
+        guard !oldLinkIDs.isEmpty else { return }  // No animation on initial parse
+        let newLinkIDs = Set(parsedMap.links.map { LinkID(start: $0.start, end: $0.end) })
+        let activeLinkIDs = Set(linkGlitchEntries.map(\.linkID))
+
+        // Added links: in new but not old
+        for link in parsedMap.links {
+            let lid = LinkID(start: link.start, end: link.end)
+            guard !oldLinkIDs.contains(lid), !activeLinkIDs.contains(lid) else { continue }
+            linkGlitchEntries.append(LinkGlitchEntry(
+                linkID: lid,
+                startTime: now,
+                isNew: true
+            ))
+        }
+
+        // Removed links: in old but not new
+        for link in oldLinks {
+            let lid = LinkID(start: link.start, end: link.end)
+            guard !newLinkIDs.contains(lid), !activeLinkIDs.contains(lid) else { continue }
+            linkGlitchEntries.append(LinkGlitchEntry(
+                linkID: lid,
+                startTime: now,
+                isNew: false,
+                ghostLink: link
+            ))
         }
     }
 

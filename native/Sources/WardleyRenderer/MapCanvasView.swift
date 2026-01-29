@@ -8,6 +8,8 @@ public struct MapCanvasView: View {
     public let theme: MapTheme
     public let highlightedLine: Int?
     public let glitchProgress: [String: GlitchInfo]
+    public let linkGlitchProgress: [LinkID: LinkGlitchInfo]
+    public let ghostLinks: [MapLink]
     public let dragOverride: (elementName: String, position: CGPoint)?
     public let dragPhase: Double
     public let onDragChanged: ((_ elementName: String, _ canvasPosition: CGPoint) -> Void)?
@@ -21,6 +23,8 @@ public struct MapCanvasView: View {
         theme: MapTheme,
         highlightedLine: Int? = nil,
         glitchProgress: [String: GlitchInfo] = [:],
+        linkGlitchProgress: [LinkID: LinkGlitchInfo] = [:],
+        ghostLinks: [MapLink] = [],
         dragOverride: (elementName: String, position: CGPoint)? = nil,
         dragPhase: Double = 0,
         onDragChanged: ((_ elementName: String, _ canvasPosition: CGPoint) -> Void)? = nil,
@@ -30,6 +34,8 @@ public struct MapCanvasView: View {
         self.theme = theme
         self.highlightedLine = highlightedLine
         self.glitchProgress = glitchProgress
+        self.linkGlitchProgress = linkGlitchProgress
+        self.ghostLinks = ghostLinks
         self.dragOverride = dragOverride
         self.dragPhase = dragPhase
         self.onDragChanged = onDragChanged
@@ -160,7 +166,9 @@ public struct MapCanvasView: View {
                 evolved: map.evolved,
                 theme: theme,
                 calc: calc,
-                positionOverrides: posOverrides
+                positionOverrides: posOverrides,
+                linkGlitchProgress: linkGlitchProgress,
+                ghostLinks: ghostLinks
             )
 
             EvolutionLinkDrawing.draw(
