@@ -570,6 +570,6 @@ public struct ParseError: Sendable, Equatable {
 // MARK: - Constants
 
 public enum MapDefaults {
-    public static let canvasWidth: Double = 500
-    public static let canvasHeight: Double = 600
+    public static let canvasWidth: Double = 900
+    public static let canvasHeight: Double = 500
 }
