@@ -37,19 +37,17 @@ public struct MapCanvasView: View {
 
     public var body: some View {
         GeometryReader { geo in
-            let fitScale = min(
-                geo.size.width / (mapWidth + 40),
-                geo.size.height / (mapHeight + 60)
-            )
+            let fitScale = geo.size.width / (mapWidth + 40)
             let effectiveScale = fitScale * scale
+            let scaledHeight = (mapHeight + 60) * effectiveScale
 
-            ScrollView([.horizontal, .vertical]) {
+            ScrollView(.vertical) {
                 canvas
                     .frame(width: mapWidth + 40, height: mapHeight + 60)
                     .scaleEffect(effectiveScale, anchor: .topLeading)
                     .frame(
-                        width: max(geo.size.width, (mapWidth + 40) * effectiveScale),
-                        height: max(geo.size.height, (mapHeight + 60) * effectiveScale)
+                        width: geo.size.width,
+                        height: max(geo.size.height, scaledHeight)
                     )
             }
             .frame(width: geo.size.width, height: geo.size.height)
