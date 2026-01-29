@@ -33,8 +33,8 @@ public struct ContentView: View {
                     onDragChanged: { elementName, canvasPosition in
                         state.dragOverride = (elementName: elementName, position: canvasPosition)
                     },
-                    onDragEnded: { elementName, canvasPosition in
-                        let calc = PositionCalculator()
+                    onDragEnded: { elementName, canvasPosition, canvasSize in
+                        let calc = PositionCalculator(mapWidth: canvasSize.width, mapHeight: canvasSize.height)
                         let newVis = calc.yToVisibility(canvasPosition.y)
                         let newMat = calc.xToMaturity(canvasPosition.x)
 

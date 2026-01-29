@@ -10,7 +10,7 @@ public struct MapCanvasView: View {
     public let glitchProgress: [String: GlitchInfo]
     public let dragOverride: (elementName: String, position: CGPoint)?
     public let onDragChanged: ((_ elementName: String, _ canvasPosition: CGPoint) -> Void)?
-    public let onDragEnded: ((_ elementName: String, _ canvasPosition: CGPoint) -> Void)?
+    public let onDragEnded: ((_ elementName: String, _ canvasPosition: CGPoint, _ canvasSize: CGSize) -> Void)?
 
     @State private var dragElementName: String? = nil
     @State private var viewSize: CGSize = .zero
@@ -22,7 +22,7 @@ public struct MapCanvasView: View {
         glitchProgress: [String: GlitchInfo] = [:],
         dragOverride: (elementName: String, position: CGPoint)? = nil,
         onDragChanged: ((_ elementName: String, _ canvasPosition: CGPoint) -> Void)? = nil,
-        onDragEnded: ((_ elementName: String, _ canvasPosition: CGPoint) -> Void)? = nil
+        onDragEnded: ((_ elementName: String, _ canvasPosition: CGPoint, _ canvasSize: CGSize) -> Void)? = nil
     ) {
         self.map = map
         self.theme = theme
@@ -82,7 +82,7 @@ public struct MapCanvasView: View {
 
     private func handleCanvasDragEnded(_ value: DragGesture.Value) {
         if let name = dragElementName {
-            onDragEnded?(name, value.location)
+            onDragEnded?(name, value.location, viewSize)
         }
         dragElementName = nil
     }
