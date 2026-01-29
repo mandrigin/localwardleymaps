@@ -69,10 +69,11 @@ public final class MapEnvironmentState {
 
     private func startMonitoring() {
         guard let url = fileURL else { return }
-        fileMonitor.onFileChanged = { [weak self] in
-            self?.reloadFromDisk()
+        fileMonitor.watch(url: url) { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.reloadFromDisk()
+            }
         }
-        fileMonitor.watch(url: url)
     }
 
     public func reparseMap() {
