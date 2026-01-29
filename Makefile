@@ -1,6 +1,6 @@
 .PHONY: all build clean test \
        electron electron-build electron-dev \
-       native native-release native-test native-clean \
+       native native-release native-run native-test native-clean \
        venv
 
 VENV_DIR := .venv
@@ -47,14 +47,14 @@ electron-clean:
 
 # ── Native macOS (native/) ──────────────────────────────────────────
 
-native:                         ## Build native macOS app (debug)
-	@echo "==> Building native macOS app..."
-	cd native && swift build
-	@echo "Run with: open native/.build/debug/WardleyMapsApp"
+native:                         ## Build native .app bundle (debug)
+	@cd native && ./build.sh debug
 
-native-release:                 ## Build native macOS app (release)
-	@echo "==> Building native macOS app (release)..."
-	cd native && swift build -c release
+native-run: native              ## Build and launch native app
+	@cd native && ./build.sh run
+
+native-release:                 ## Build native .app bundle (release)
+	@cd native && ./build.sh release
 
 native-test:                    ## Run native macOS tests
 	@echo "==> Running native tests..."
