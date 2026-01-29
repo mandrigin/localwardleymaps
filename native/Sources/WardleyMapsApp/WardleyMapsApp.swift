@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 import WardleyApp
 import WardleyModel
 import WardleyTheme
@@ -66,7 +67,7 @@ struct WardleyMapsNativeApp: App {
 
     private func openFilePanel() {
         let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.plainText]
+        panel.allowedContentTypes = [.wardleyMap, .plainText]
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         panel.begin { response in

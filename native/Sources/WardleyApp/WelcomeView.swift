@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Welcome screen with recent files and Open button.
 public struct WelcomeView: View {
@@ -82,7 +83,7 @@ public struct WelcomeView: View {
 
     private func openFile() {
         let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.plainText]
+        panel.allowedContentTypes = [.wardleyMap, .plainText]
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         panel.begin { response in
