@@ -33,6 +33,7 @@ public final class MapEnvironmentState {
 
     /// Remove entries whose animation has completed (older than 0.8s).
     public func cleanupExpiredGlitches(at date: Date) {
+        guard glitchEntries.contains(where: { date.timeIntervalSince($0.startTime) >= GlitchEntry.duration }) else { return }
         glitchEntries.removeAll { entry in
             date.timeIntervalSince(entry.startTime) >= GlitchEntry.duration
         }

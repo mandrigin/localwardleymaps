@@ -230,13 +230,11 @@ public struct MapCanvasView: View {
                 )
             }
         }
-        .background(
-            GeometryReader { geo in
-                Color.clear
-                    .onAppear { viewSize = geo.size }
-                    .onChange(of: geo.size) { _, newSize in viewSize = newSize }
-            }
-        )
+        .onGeometryChange(for: CGSize.self) { proxy in
+            proxy.size
+        } action: { newSize in
+            viewSize = newSize
+        }
         .gesture(
             DragGesture(minimumDistance: 4)
                 .onChanged { value in
