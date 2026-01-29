@@ -50,6 +50,7 @@ electron-clean:
 native:                         ## Build native macOS app (debug)
 	@echo "==> Building native macOS app..."
 	cd native && swift build
+	@echo "Run with: open native/.build/debug/WardleyMapsApp"
 
 native-release:                 ## Build native macOS app (release)
 	@echo "==> Building native macOS app (release)..."
