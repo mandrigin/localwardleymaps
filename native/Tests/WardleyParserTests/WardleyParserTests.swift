@@ -318,7 +318,7 @@ struct WardleyParserTests {
         #expect(map.elements[0].maturity == 0.1)
     }
 
-    @Test("Multiple unpositioned components are distributed along maturity")
+    @Test("Multiple unpositioned components are distributed in a 2D spiral")
     func testUnpositionedComponentDistribution() {
         let input = """
         component Alpha
@@ -327,17 +327,25 @@ struct WardleyParserTests {
         """
         let map = parser.parse(input)
         #expect(map.elements.count == 3)
-        // All should share the default visibility
-        for el in map.elements {
-            #expect(el.visibility == 0.9)
-        }
-        // Each should have a distinct maturity
-        #expect(map.elements[0].maturity != map.elements[1].maturity)
-        #expect(map.elements[1].maturity != map.elements[2].maturity)
-        // First at 0.1, last at 0.9, middle at 0.5
+        // First component stays at the default center position
+        #expect(map.elements[0].visibility == 0.9)
         #expect(map.elements[0].maturity == 0.1)
-        #expect(map.elements[1].maturity == 0.5)
-        #expect(map.elements[2].maturity == 0.9)
+        // Subsequent components spread in 2D — both axes should differ from center
+        let beta = map.elements[1]
+        let gamma = map.elements[2]
+        #expect(beta.visibility != 0.9 || beta.maturity != 0.1)
+        #expect(gamma.visibility != 0.9 || gamma.maturity != 0.1)
+        // All three should have distinct positions (no two share both coords)
+        let positions = map.elements.map { ($0.visibility, $0.maturity) }
+        for i in 0..<positions.count {
+            for j in (i + 1)..<positions.count {
+                #expect(positions[i].0 != positions[j].0 || positions[i].1 != positions[j].1)
+            }
+        }
+        // The spiral should use both axes — at least one component should have
+        // a visibility different from the default 0.9
+        let hasVariedVisibility = map.elements.contains { $0.visibility != 0.9 }
+        #expect(hasVariedVisibility)
     }
 
     @Test("Positioned components are not affected by distribution")

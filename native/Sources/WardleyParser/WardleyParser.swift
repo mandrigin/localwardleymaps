@@ -306,12 +306,20 @@ public struct WardleyParser: Sendable {
             }
         }
 
-        // Distribute unpositioned components so they don't stack on each other
+        // Distribute unpositioned components in a golden-angle spiral so they
+        // form a visible 2D "pile" rather than a straight line.
         if unpositionedIndices.count > 1 {
-            let count = unpositionedIndices.count
+            let centerVisibility = 0.9
+            let centerMaturity = 0.1
+            let goldenAngle = 2.39996322972865332 // 2π(1 − 1/φ) ≈ 137.508°
+            let spacing = 0.04
+
             for (offset, idx) in unpositionedIndices.enumerated() {
-                let maturity = 0.1 + (0.8 * Double(offset) / Double(count - 1))
-                elements[idx].maturity = maturity
+                if offset == 0 { continue } // first stays at center
+                let angle = Double(offset) * goldenAngle
+                let radius = spacing * sqrt(Double(offset))
+                elements[idx].visibility = max(0.05, min(0.95, centerVisibility + radius * sin(angle)))
+                elements[idx].maturity = max(0.05, min(0.95, centerMaturity + radius * cos(angle)))
             }
         }
 
