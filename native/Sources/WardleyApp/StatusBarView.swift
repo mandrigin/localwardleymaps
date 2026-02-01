@@ -6,17 +6,20 @@ import WardleyTheme
 public struct StatusBarView: View {
     @Bindable var state: MapEnvironmentState
     var onExport: () -> Void
+    var onCopyImage: () -> Void
     var onStop: () -> Void
     var onReload: () -> Void
 
     public init(
         state: MapEnvironmentState,
         onExport: @escaping () -> Void,
+        onCopyImage: @escaping () -> Void,
         onStop: @escaping () -> Void,
         onReload: @escaping () -> Void
     ) {
         self.state = state
         self.onExport = onExport
+        self.onCopyImage = onCopyImage
         self.onStop = onStop
         self.onReload = onReload
     }
@@ -62,8 +65,14 @@ public struct StatusBarView: View {
             .disabled(!state.hasUnsavedChanges)
 
             // Actions
-            Button("Export PNG", systemImage: "square.and.arrow.up") {
+            Button("Export Image", systemImage: "square.and.arrow.up") {
                 onExport()
+            }
+            .font(.caption)
+            .buttonStyle(.bordered)
+
+            Button("Copy Image", systemImage: "doc.on.doc") {
+                onCopyImage()
             }
             .font(.caption)
             .buttonStyle(.bordered)

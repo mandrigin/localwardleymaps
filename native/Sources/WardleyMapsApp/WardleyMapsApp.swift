@@ -70,6 +70,11 @@ struct WardleyMapsNativeApp: App {
                     NotificationCenter.default.post(name: .exportPNG, object: nil)
                 }
                 .keyboardShortcut("e")
+
+                Button("Copy Image to Pasteboard") {
+                    NotificationCenter.default.post(name: .copyImageToPasteboard, object: nil)
+                }
+                .keyboardShortcut("c", modifiers: [.command, .shift])
             }
         }
     }
@@ -105,6 +110,3 @@ struct WardleyMapsNativeApp: App {
     }
 }
 
-extension Notification.Name {
-    static let exportPNG = Notification.Name("exportPNG")
-}

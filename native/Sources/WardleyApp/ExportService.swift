@@ -45,4 +45,15 @@ public struct ExportService {
             return false
         }
     }
+
+    @MainActor
+    public static func copyToPasteboard(
+        map: WardleyMap,
+        theme: MapTheme
+    ) -> Bool {
+        guard let image = exportPNG(map: map, theme: theme) else { return false }
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        return pasteboard.writeObjects([image])
+    }
 }
