@@ -109,7 +109,61 @@ public struct PositionUpdater {
         return nil
     }
 
+    /// Update the label offset of a component in the DSL text.
+    /// Returns the modified text, or nil if the component wasn't found.
+    public static func updateLabelOffset(
+        in text: String,
+        componentName: String,
+        newX: Double,
+        newY: Double
+    ) -> String? {
+        var lines = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        let labelText = String(format: " label [%.2f, %.2f]", newX, newY)
+
+        for (i, line) in lines.enumerated() {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+
+            guard matchesElementLine(trimmed, name: componentName) else { continue }
+
+            // Replace existing label or append new one
+            if let updated = replaceLabelInLine(line, with: labelText) {
+                lines[i] = updated
+            } else {
+                lines[i] = line + labelText
+            }
+            return lines.joined(separator: "\n")
+        }
+
+        return nil
+    }
+
     // MARK: - Private
+
+    private static func matchesElementLine(_ trimmed: String, name: String) -> Bool {
+        for keyword in ["component", "anchor", "submap"] {
+            let prefix = "\(keyword) \(name)"
+            if trimmed.hasPrefix(prefix) {
+                let rest = trimmed.dropFirst(prefix.count)
+                if rest.isEmpty || rest.first == " " || rest.first == "[" { return true }
+            }
+        }
+        let evolvePrefix = "evolve \(name)"
+        if trimmed.hasPrefix(evolvePrefix) {
+            let rest = trimmed.dropFirst(evolvePrefix.count)
+            if rest.isEmpty || rest.first == " " || rest.first == "-" { return true }
+        }
+        return false
+    }
+
+    private static func replaceLabelInLine(_ line: String, with labelText: String) -> String? {
+        guard let labelStart = line.range(of: " label [") else { return nil }
+        let afterBracket = line[labelStart.upperBound...]
+        guard let closeBracket = afterBracket.firstIndex(of: "]") else { return nil }
+        let endIndex = line.index(after: closeBracket)
+        var newLine = line
+        newLine.replaceSubrange(labelStart.lowerBound..<endIndex, with: labelText)
+        return newLine
+    }
 
     private static func replaceCoordinates(
         in line: String,

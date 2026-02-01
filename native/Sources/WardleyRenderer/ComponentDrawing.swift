@@ -25,7 +25,8 @@ public struct ComponentDrawing {
         highlightedLine: Int? = nil,
         glitchProgress: [String: GlitchInfo] = [:],
         positionOverrides: [String: CGPoint] = [:],
-        dragPhase: Double = 0
+        dragPhase: Double = 0,
+        labelMoveElementName: String? = nil
     ) {
         for element in elements {
             let pt = positionOverrides[element.name] ?? calc.point(visibility: element.visibility, maturity: element.maturity)
@@ -227,6 +228,19 @@ public struct ComponentDrawing {
                         style: StrokeStyle(lineWidth: 2, dash: [4, 2])
                     )
                 }
+
+                if labelMoveElementName == element.name {
+                    let selR = r + 4
+                    let selRect = CGRect(
+                        x: pt.x - selR, y: pt.y - selR,
+                        width: selR * 2, height: selR * 2
+                    )
+                    context.stroke(
+                        Path(ellipseIn: selRect),
+                        with: .color(strokeColor.opacity(0.7)),
+                        style: StrokeStyle(lineWidth: 2, dash: [4, 2])
+                    )
+                }
             }
         }
     }
@@ -239,7 +253,9 @@ public struct ComponentDrawing {
         calc: PositionCalculator,
         glitchProgress: [String: GlitchInfo] = [:],
         positionOverrides: [String: CGPoint] = [:],
-        dragPhase: Double = 0
+        dragPhase: Double = 0,
+        labelMoveElementName: String? = nil,
+        labelOffsetOverrides: [String: CGPoint] = [:]
     ) {
         for element in elements {
             let pt = positionOverrides[element.name] ?? calc.point(visibility: element.visibility, maturity: element.maturity)
@@ -317,14 +333,40 @@ public struct ComponentDrawing {
                     )
                 }
             } else {
-                // Normal label
+                // Normal label (or label-move mode)
+                let labelOffset = labelOffsetOverrides[element.name] ?? CGPoint(x: element.label.x, y: element.label.y)
                 let labelPt = CGPoint(
-                    x: pt.x + element.label.x,
-                    y: pt.y + element.label.y
+                    x: pt.x + labelOffset.x,
+                    y: pt.y + labelOffset.y
                 )
+                let isLabelMove = labelMoveElementName == element.name
+                let fontWeight: Font.Weight = isLabelMove ? .bold : theme.component.fontWeight
+                let strokeColor = isEvolved ? theme.component.evolved : theme.component.stroke
+
+                if isLabelMove {
+                    // Connector line from dot to label
+                    var connectorPath = Path()
+                    connectorPath.move(to: pt)
+                    connectorPath.addLine(to: labelPt)
+                    context.stroke(
+                        connectorPath,
+                        with: .color(strokeColor.opacity(0.4)),
+                        style: StrokeStyle(lineWidth: 1, dash: [3, 3])
+                    )
+
+                    // Highlight background behind label
+                    let labelW = CGFloat(element.name.count) * theme.component.fontSize * 0.6
+                    let labelH = theme.component.fontSize * 1.4
+                    let bgRect = CGRect(x: labelPt.x - 2, y: labelPt.y - 2, width: labelW + 4, height: labelH + 4)
+                    context.fill(
+                        Path(roundedRect: bgRect, cornerRadius: 3),
+                        with: .color(textColor.opacity(0.08))
+                    )
+                }
+
                 context.draw(
                     Text(element.name)
-                        .font(.system(size: theme.component.fontSize, weight: theme.component.fontWeight))
+                        .font(.system(size: theme.component.fontSize, weight: fontWeight))
                         .foregroundStyle(textColor),
                     at: labelPt,
                     anchor: .topLeading

@@ -57,6 +57,17 @@ public struct ContentView: View {
                             state.hasUnsavedChanges = true
                         }
                         state.dragOverride = nil
+                    },
+                    onLabelDragEnded: { elementName, newLabelX, newLabelY in
+                        if let updated = PositionUpdater.updateLabelOffset(
+                            in: state.mapText,
+                            componentName: elementName,
+                            newX: newLabelX,
+                            newY: newLabelY
+                        ) {
+                            state.mapText = updated
+                            state.hasUnsavedChanges = true
+                        }
                     }
                 )
             }

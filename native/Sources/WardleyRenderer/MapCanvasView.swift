@@ -14,9 +14,16 @@ public struct MapCanvasView: View {
     public let dragPhase: Double
     public let onDragChanged: ((_ elementName: String, _ canvasPosition: CGPoint) -> Void)?
     public let onDragEnded: ((_ elementName: String, _ canvasPosition: CGPoint, _ canvasSize: CGSize) -> Void)?
+    public let onLabelDragEnded: ((_ elementName: String, _ newLabelX: Double, _ newLabelY: Double) -> Void)?
 
     @State private var dragElementName: String? = nil
     @State private var viewSize: CGSize = .zero
+
+    // Label-move mode state
+    @State private var labelMoveElementName: String? = nil
+    @State private var isDraggingLabel: Bool = false
+    @State private var labelDragOffset: CGPoint? = nil
+    @State private var labelDragStartOffset: CGPoint? = nil
 
     public init(
         map: WardleyMap,
@@ -28,7 +35,8 @@ public struct MapCanvasView: View {
         dragOverride: (elementName: String, position: CGPoint)? = nil,
         dragPhase: Double = 0,
         onDragChanged: ((_ elementName: String, _ canvasPosition: CGPoint) -> Void)? = nil,
-        onDragEnded: ((_ elementName: String, _ canvasPosition: CGPoint, _ canvasSize: CGSize) -> Void)? = nil
+        onDragEnded: ((_ elementName: String, _ canvasPosition: CGPoint, _ canvasSize: CGSize) -> Void)? = nil,
+        onLabelDragEnded: ((_ elementName: String, _ newLabelX: Double, _ newLabelY: Double) -> Void)? = nil
     ) {
         self.map = map
         self.theme = theme
@@ -40,6 +48,7 @@ public struct MapCanvasView: View {
         self.dragPhase = dragPhase
         self.onDragChanged = onDragChanged
         self.onDragEnded = onDragEnded
+        self.onLabelDragEnded = onLabelDragEnded
     }
 
     /// Estimated label bounding rect for hit-testing (topLeading anchor).
@@ -55,10 +64,122 @@ public struct MapCanvasView: View {
         )
     }
 
+    /// Check if a point is near the selected element's dot or label.
+    private func isNearSelectedElement(_ point: CGPoint, size: CGSize) -> Bool {
+        guard let selectedName = labelMoveElementName else { return false }
+        let calc = PositionCalculator(mapWidth: size.width, mapHeight: size.height)
+        let hitRadius: CGFloat = theme.component.radius + 12
+
+        for element in map.elements where element.name == selectedName {
+            let pt = calc.point(visibility: element.visibility, maturity: element.maturity)
+
+            // Check dot
+            let dist = hypot(pt.x - point.x, pt.y - point.y)
+            if dist < hitRadius { return true }
+
+            // Check label
+            let lr = labelRect(center: pt, labelX: element.label.x, labelY: element.label.y,
+                             name: element.name, fontSize: theme.component.fontSize)
+            if lr.contains(point) { return true }
+        }
+        return false
+    }
+
+    private func handleDoubleClick(at location: CGPoint, size: CGSize) {
+        let calc = PositionCalculator(mapWidth: size.width, mapHeight: size.height)
+        let hitRadius: CGFloat = theme.component.radius + 8
+        var bestDist: CGFloat = .infinity
+        var bestName: String? = nil
+
+        for element in map.elements {
+            let pt = calc.point(visibility: element.visibility, maturity: element.maturity)
+            let dist = hypot(pt.x - location.x, pt.y - location.y)
+            if dist < hitRadius && dist < bestDist {
+                bestDist = dist
+                bestName = element.name
+            }
+
+            // Also allow double-click on label
+            let lr = labelRect(center: pt, labelX: element.label.x, labelY: element.label.y,
+                             name: element.name, fontSize: theme.component.fontSize)
+            if lr.contains(location) {
+                let labelDist = hypot(lr.midX - location.x, lr.midY - location.y)
+                if labelDist < bestDist {
+                    bestDist = labelDist
+                    bestName = element.name
+                }
+            }
+        }
+
+        if let name = bestName {
+            // Toggle label-move mode
+            if labelMoveElementName == name {
+                labelMoveElementName = nil
+            } else {
+                labelMoveElementName = name
+            }
+        } else {
+            labelMoveElementName = nil
+        }
+    }
+
+    private func handleSingleClick(at location: CGPoint, size: CGSize) {
+        guard labelMoveElementName != nil else { return }
+        // Exit label-move mode if clicking outside the selected element
+        if !isNearSelectedElement(location, size: size) {
+            labelMoveElementName = nil
+        }
+    }
+
     private func handleCanvasDragChanged(_ value: DragGesture.Value, size: CGSize) {
         let calc = PositionCalculator(mapWidth: size.width, mapHeight: size.height)
 
-        // First touch: hit-test to find nearest element (dot OR label)
+        // Label-move mode: drag moves the label
+        if let selectedName = labelMoveElementName {
+            if isDraggingLabel {
+                // Continue dragging label
+                let delta = CGPoint(
+                    x: value.location.x - value.startLocation.x,
+                    y: value.location.y - value.startLocation.y
+                )
+                if let startOffset = labelDragStartOffset {
+                    labelDragOffset = CGPoint(
+                        x: startOffset.x + delta.x,
+                        y: startOffset.y + delta.y
+                    )
+                }
+                return
+            }
+
+            if dragElementName == nil {
+                // First touch in label-move mode: check if near selected element
+                if isNearSelectedElement(value.startLocation, size: size) {
+                    // Start label drag
+                    isDraggingLabel = true
+                    dragElementName = selectedName
+                    if let element = map.elements.first(where: { $0.name == selectedName }) {
+                        labelDragStartOffset = CGPoint(x: element.label.x, y: element.label.y)
+                    }
+                    let delta = CGPoint(
+                        x: value.location.x - value.startLocation.x,
+                        y: value.location.y - value.startLocation.y
+                    )
+                    if let startOffset = labelDragStartOffset {
+                        labelDragOffset = CGPoint(
+                            x: startOffset.x + delta.x,
+                            y: startOffset.y + delta.y
+                        )
+                    }
+                    return
+                } else {
+                    // Drag started outside selected element — exit label-move mode
+                    labelMoveElementName = nil
+                    // Fall through to normal drag handling
+                }
+            }
+        }
+
+        // Normal drag handling (move component position)
         if dragElementName == nil {
             let hitRadius: CGFloat = theme.component.radius + 8
             var bestDist: CGFloat = .infinity
@@ -118,6 +239,18 @@ public struct MapCanvasView: View {
     }
 
     private func handleCanvasDragEnded(_ value: DragGesture.Value) {
+        if isDraggingLabel {
+            // Finish label drag
+            if let name = dragElementName, let offset = labelDragOffset {
+                onLabelDragEnded?(name, Double(offset.x), Double(offset.y))
+            }
+            isDraggingLabel = false
+            labelDragOffset = nil
+            labelDragStartOffset = nil
+            dragElementName = nil
+            return
+        }
+
         if let name = dragElementName {
             onDragEnded?(name, value.location, viewSize)
         }
@@ -132,6 +265,12 @@ public struct MapCanvasView: View {
             var posOverrides: [String: CGPoint] = [:]
             if let drag = dragOverride {
                 posOverrides[drag.elementName] = drag.position
+            }
+
+            // Build label offset overrides from label drag state
+            var labelOverrides: [String: CGPoint] = [:]
+            if let name = labelMoveElementName, let offset = labelDragOffset {
+                labelOverrides[name] = offset
             }
 
             GridDrawing.draw(
@@ -189,7 +328,8 @@ public struct MapCanvasView: View {
                 highlightedLine: highlightedLine,
                 glitchProgress: glitchProgress,
                 positionOverrides: posOverrides,
-                dragPhase: dragPhase
+                dragPhase: dragPhase,
+                labelMoveElementName: labelMoveElementName
             )
 
             ComponentDrawing.drawAnchorDots(
@@ -244,7 +384,9 @@ public struct MapCanvasView: View {
                 calc: calc,
                 glitchProgress: glitchProgress,
                 positionOverrides: posOverrides,
-                dragPhase: dragPhase
+                dragPhase: dragPhase,
+                labelMoveElementName: labelMoveElementName,
+                labelOffsetOverrides: labelOverrides
             )
 
             ComponentDrawing.drawAnchorLabels(
@@ -285,5 +427,24 @@ public struct MapCanvasView: View {
                     handleCanvasDragEnded(value)
                 }
         )
+        .simultaneousGesture(
+            SpatialTapGesture(count: 2)
+                .onEnded { value in
+                    handleDoubleClick(at: value.location, size: viewSize)
+                }
+        )
+        .simultaneousGesture(
+            SpatialTapGesture(count: 1)
+                .onEnded { value in
+                    handleSingleClick(at: value.location, size: viewSize)
+                }
+        )
+        .onKeyPress(.escape) {
+            if labelMoveElementName != nil {
+                labelMoveElementName = nil
+                return .handled
+            }
+            return .ignored
+        }
     }
 }
