@@ -7,6 +7,8 @@ import UniformTypeIdentifiers
 public extension Notification.Name {
     static let exportPNG = Notification.Name("exportPNG")
     static let copyImageToPasteboard = Notification.Name("copyImageToPasteboard")
+    static let toggleMarker = Notification.Name("toggleMarker")
+    static let clearMarkers = Notification.Name("clearMarkers")
 }
 
 /// Full-window preview of a monitored Wardley Map file.
@@ -31,6 +33,7 @@ public struct ContentView: View {
             TimelineView(.animation(minimumInterval: 1.0/60, paused: !state.isGlitching)) { timeline in
                 let glitchProgress = computeGlitchProgress(at: timeline.date)
                 let linkGlitch = computeLinkGlitchProgress(at: timeline.date)
+                let markerSnapshots = computeMarkerSnapshots(at: timeline.date)
                 MapCanvasView(
                     map: state.parsedMap,
                     theme: state.currentTheme,
@@ -39,6 +42,8 @@ public struct ContentView: View {
                     ghostLinks: linkGlitch.ghosts,
                     dragOverride: state.dragOverride,
                     dragPhase: state.dragOverride != nil ? timeline.date.timeIntervalSinceReferenceDate : 0,
+                    markerStrokes: markerSnapshots,
+                    isMarkerActive: state.marker.isActive,
                     onDragChanged: { elementName, canvasPosition in
                         state.dragOverride = (elementName: elementName, position: canvasPosition)
                     },
@@ -68,11 +73,32 @@ public struct ContentView: View {
                             state.mapText = updated
                             state.hasUnsavedChanges = true
                         }
+                    },
+                    onMarkerDragChanged: { canvasPosition in
+                        let marker = state.marker
+                        if marker.activeStroke == nil {
+                            marker.beginStroke(at: canvasPosition)
+                        } else {
+                            marker.continueStroke(to: canvasPosition)
+                        }
+                    },
+                    onMarkerDragEnded: {
+                        state.marker.endStroke()
                     }
                 )
             }
             .background(state.currentTheme.containerBackground)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .onContinuousHover { phase in
+                if state.marker.isActive {
+                    switch phase {
+                    case .active:
+                        NSCursor.crosshair.push()
+                    case .ended:
+                        NSCursor.pop()
+                    }
+                }
+            }
 
             // Status bar
             StatusBarView(
@@ -96,6 +122,12 @@ public struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .copyImageToPasteboard)) { _ in
             copyImageToPasteboard()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .toggleMarker)) { _ in
+            state.marker.isActive.toggle()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .clearMarkers)) { _ in
+            state.marker.clearAll()
         }
         .frame(minWidth: 600, minHeight: 400)
     }
@@ -124,6 +156,31 @@ public struct ContentView: View {
             }
         }
         return (progress, ghosts)
+    }
+
+    private func computeMarkerSnapshots(at date: Date) -> [MarkerDrawing.StrokeSnapshot] {
+        let marker = state.marker
+        marker.cleanupExpired(at: date)
+        var snapshots: [MarkerDrawing.StrokeSnapshot] = []
+        for stroke in marker.strokes {
+            let op = marker.opacity(for: stroke, at: date)
+            if op > 0.001 {
+                snapshots.append(MarkerDrawing.StrokeSnapshot(
+                    points: stroke.points,
+                    opacity: op,
+                    isPermanent: stroke.isPermanent
+                ))
+            }
+        }
+        // Include active stroke being drawn
+        if let active = marker.activeStroke {
+            snapshots.append(MarkerDrawing.StrokeSnapshot(
+                points: active.points,
+                opacity: 1.0,
+                isPermanent: active.isPermanent
+            ))
+        }
+        return snapshots
     }
 
     private func exportPNG() {

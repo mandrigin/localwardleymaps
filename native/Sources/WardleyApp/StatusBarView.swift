@@ -56,6 +56,37 @@ public struct StatusBarView: View {
 
             Spacer()
 
+            // Marker controls
+            Toggle(isOn: Binding(
+                get: { state.marker.isActive },
+                set: { state.marker.isActive = $0 }
+            )) {
+                Label("Marker", systemImage: state.marker.isActive ? "pencil.tip" : "pencil.tip.crop.circle")
+            }
+            .toggleStyle(.button)
+            .font(.caption)
+            .controlSize(.small)
+            .tint(state.marker.isActive ? .yellow : nil)
+
+            if state.marker.isActive {
+                Toggle(isOn: Binding(
+                    get: { state.marker.permanentMode },
+                    set: { state.marker.permanentMode = $0 }
+                )) {
+                    Label("Pin", systemImage: "pin")
+                }
+                .toggleStyle(.button)
+                .font(.caption)
+                .controlSize(.small)
+                .tint(state.marker.permanentMode ? .red : nil)
+
+                Button("Clear", systemImage: "trash") {
+                    state.marker.clearAll()
+                }
+                .font(.caption)
+                .buttonStyle(.bordered)
+            }
+
             // Auto-save toggle
             Toggle(isOn: $state.autoSaveEnabled) {
                 Label("Auto-save", systemImage: "arrow.triangle.2.circlepath")
