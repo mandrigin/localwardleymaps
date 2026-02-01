@@ -27,6 +27,14 @@ public struct PositionUpdater {
                 }
             }
 
+            // Match "component <name>" without coordinates — INSERT
+            if trimmed == "component \(componentName)" ||
+               (trimmed.hasPrefix("component \(componentName) ") && !trimmed.contains("[")) {
+                lines[i] = insertCoordinatesAfterName(in: line, keyword: "component", name: componentName,
+                                                        vis: newVisibility, mat: newMaturity)
+                return lines.joined(separator: "\n")
+            }
+
             // Match "anchor <name> [vis, mat]"
             if trimmed.hasPrefix("anchor \(componentName) [") {
                 if let updated = replaceCoordinates(in: line, keyword: "anchor", name: componentName,
@@ -36,6 +44,14 @@ public struct PositionUpdater {
                 }
             }
 
+            // Match "anchor <name>" without coordinates — INSERT
+            if trimmed == "anchor \(componentName)" ||
+               (trimmed.hasPrefix("anchor \(componentName) ") && !trimmed.contains("[")) {
+                lines[i] = insertCoordinatesAfterName(in: line, keyword: "anchor", name: componentName,
+                                                        vis: newVisibility, mat: newMaturity)
+                return lines.joined(separator: "\n")
+            }
+
             // Match "submap <name> [vis, mat]"
             if trimmed.hasPrefix("submap \(componentName) [") {
                 if let updated = replaceCoordinates(in: line, keyword: "submap", name: componentName,
@@ -43,6 +59,14 @@ public struct PositionUpdater {
                     lines[i] = updated
                     return lines.joined(separator: "\n")
                 }
+            }
+
+            // Match "submap <name>" without coordinates — INSERT
+            if trimmed == "submap \(componentName)" ||
+               (trimmed.hasPrefix("submap \(componentName) ") && !trimmed.contains("[")) {
+                lines[i] = insertCoordinatesAfterName(in: line, keyword: "submap", name: componentName,
+                                                        vis: newVisibility, mat: newMaturity)
+                return lines.joined(separator: "\n")
             }
 
             // Match "note +<text> [vis, mat]"
@@ -104,6 +128,21 @@ public struct PositionUpdater {
         let before = String(line[..<prefixRange.upperBound]) + String(afterPrefix[..<openBracket])
         let after = String(afterPrefix[afterPrefix.index(after: closeBracket)...])
         let newCoords = String(format: "[%.2f, %.2f]", vis, mat)
+        return before + newCoords + after
+    }
+
+    private static func insertCoordinatesAfterName(
+        in line: String,
+        keyword: String,
+        name: String,
+        vis: Double,
+        mat: Double
+    ) -> String {
+        let prefix = "\(keyword) \(name)"
+        guard let prefixRange = line.range(of: prefix) else { return line }
+        let before = String(line[..<prefixRange.upperBound])
+        let after = String(line[prefixRange.upperBound...])
+        let newCoords = String(format: " [%.2f, %.2f]", vis, mat)
         return before + newCoords + after
     }
 
