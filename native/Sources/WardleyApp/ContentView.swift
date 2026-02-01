@@ -129,6 +129,9 @@ public struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .clearMarkers)) { _ in
             state.marker.clearAll()
         }
+        .onReceive(Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()) { now in
+            state.marker.cleanupExpired(at: now)
+        }
         .frame(minWidth: 600, minHeight: 400)
     }
 
@@ -160,7 +163,9 @@ public struct ContentView: View {
 
     private func computeMarkerSnapshots(at date: Date) -> [MarkerDrawing.StrokeSnapshot] {
         let marker = state.marker
-        marker.cleanupExpired(at: date)
+        // NOTE: Do NOT call marker.cleanupExpired() here — mutating @Observable
+        // state inside a view body triggers an infinite SwiftUI render loop.
+        // Cleanup is handled by a periodic Timer via .onReceive instead.
         var snapshots: [MarkerDrawing.StrokeSnapshot] = []
         for stroke in marker.strokes {
             let op = marker.opacity(for: stroke, at: date)

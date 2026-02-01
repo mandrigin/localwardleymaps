@@ -76,6 +76,10 @@ public final class MarkerState {
 
     /// Remove all strokes that have fully faded out.
     public func cleanupExpired(at date: Date) {
+        guard strokes.contains(where: { stroke in
+            if stroke.isPermanent { return false }
+            return date.timeIntervalSince(stroke.createdAt) >= fadeDuration
+        }) else { return }
         strokes.removeAll { stroke in
             if stroke.isPermanent { return false }
             return date.timeIntervalSince(stroke.createdAt) >= fadeDuration
