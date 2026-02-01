@@ -54,7 +54,31 @@ public final class MapEnvironmentState {
     public var dragOverride: (elementName: String, position: CGPoint)? = nil
 
     /// True when in-memory mapText differs from what's on disk.
-    public var hasUnsavedChanges: Bool = false
+    public var hasUnsavedChanges: Bool = false {
+        didSet {
+            if hasUnsavedChanges && autoSaveEnabled {
+                scheduleAutoSave()
+            }
+        }
+    }
+
+    // MARK: - Auto-Save
+
+    private static let autoSaveKey = "com.wardleymaps.autoSaveEnabled"
+
+    /// When enabled, changes are automatically saved after a short debounce delay.
+    public var autoSaveEnabled: Bool = UserDefaults.standard.bool(forKey: MapEnvironmentState.autoSaveKey) {
+        didSet {
+            UserDefaults.standard.set(autoSaveEnabled, forKey: Self.autoSaveKey)
+            if autoSaveEnabled && hasUnsavedChanges {
+                scheduleAutoSave()
+            } else if !autoSaveEnabled {
+                cancelAutoSave()
+            }
+        }
+    }
+
+    @ObservationIgnored private var autoSaveWork: DispatchWorkItem?
 
     private let parser = WardleyParser()
     private let fileMonitor = FileMonitorService()
@@ -188,6 +212,23 @@ public final class MapEnvironmentState {
                 ghostLink: link
             ))
         }
+    }
+
+    private func scheduleAutoSave() {
+        autoSaveWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self, self.hasUnsavedChanges else { return }
+                self.saveToDisk()
+            }
+        }
+        autoSaveWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1, execute: work)
+    }
+
+    private func cancelAutoSave() {
+        autoSaveWork?.cancel()
+        autoSaveWork = nil
     }
 
     private func updateTheme() {

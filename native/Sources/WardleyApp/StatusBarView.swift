@@ -53,6 +53,14 @@ public struct StatusBarView: View {
 
             Spacer()
 
+            // Auto-save toggle
+            Toggle(isOn: $state.autoSaveEnabled) {
+                Label("Auto-save", systemImage: "arrow.triangle.2.circlepath")
+            }
+            .toggleStyle(.button)
+            .font(.caption)
+            .controlSize(.small)
+
             // Save button
             Button("Save", systemImage: "square.and.arrow.down") {
                 state.saveToDisk()
