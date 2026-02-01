@@ -264,6 +264,7 @@ public struct WardleyParser: Sendable {
         let lines = data.split(separator: "\n", omittingEmptySubsequences: false)
         var elements: [MapElement] = []
         var errors: [ParseError] = []
+        var unpositionedIndices: [Int] = []
 
         for (i, line) in lines.enumerated() {
             let element = String(line)
@@ -273,6 +274,7 @@ public struct WardleyParser: Sendable {
             do {
                 let (decs, decSpacing) = extractDecorators(from: element)
                 let effectiveSpacing = max(spacing, decSpacing)
+                let hasCoords = element.contains("[") && element.contains("]")
                 let coords = extractLocation(from: element)
                 let name = extractName(from: element, keyword: keyword)
                 let inertia = extractInertia(from: element)
@@ -280,6 +282,7 @@ public struct WardleyParser: Sendable {
                 let evolve = extractEvolve(from: element)
                 let ref = extractRef(from: element)
 
+                let elementIndex = elements.count
                 elements.append(MapElement(
                     id: "\(i + 1)",
                     line: i + 1,
@@ -294,10 +297,24 @@ public struct WardleyParser: Sendable {
                     evolveMaturity: evolve.evolveMaturity,
                     url: ref
                 ))
+
+                if !hasCoords {
+                    unpositionedIndices.append(elementIndex)
+                }
             } catch {
                 errors.append(ParseError(line: i, name: "\(error)"))
             }
         }
+
+        // Distribute unpositioned components so they don't stack on each other
+        if unpositionedIndices.count > 1 {
+            let count = unpositionedIndices.count
+            for (offset, idx) in unpositionedIndices.enumerated() {
+                let maturity = 0.1 + (0.8 * Double(offset) / Double(count - 1))
+                elements[idx].maturity = maturity
+            }
+        }
+
         return (elements, errors)
     }
 

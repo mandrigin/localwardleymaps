@@ -308,6 +308,61 @@ struct WardleyParserTests {
         #expect(map.urls[0].url == "https://example.com/path")
     }
 
+    // MARK: - Unpositioned Component Distribution
+
+    @Test("Single unpositioned component keeps default position")
+    func testSingleUnpositionedComponent() {
+        let map = parser.parse("component Foo")
+        #expect(map.elements.count == 1)
+        #expect(map.elements[0].visibility == 0.9)
+        #expect(map.elements[0].maturity == 0.1)
+    }
+
+    @Test("Multiple unpositioned components are distributed along maturity")
+    func testUnpositionedComponentDistribution() {
+        let input = """
+        component Alpha
+        component Beta
+        component Gamma
+        """
+        let map = parser.parse(input)
+        #expect(map.elements.count == 3)
+        // All should share the default visibility
+        for el in map.elements {
+            #expect(el.visibility == 0.9)
+        }
+        // Each should have a distinct maturity
+        #expect(map.elements[0].maturity != map.elements[1].maturity)
+        #expect(map.elements[1].maturity != map.elements[2].maturity)
+        // First at 0.1, last at 0.9, middle at 0.5
+        #expect(map.elements[0].maturity == 0.1)
+        #expect(map.elements[1].maturity == 0.5)
+        #expect(map.elements[2].maturity == 0.9)
+    }
+
+    @Test("Positioned components are not affected by distribution")
+    func testPositionedComponentsUnaffected() {
+        let input = """
+        component Positioned [0.5, 0.5]
+        component Unpositioned1
+        component Unpositioned2
+        component AlsoPositioned [0.3, 0.7]
+        """
+        let map = parser.parse(input)
+        #expect(map.elements.count == 4)
+        // Positioned components keep their explicit coordinates
+        let positioned = map.elements.first { $0.name == "Positioned" }!
+        #expect(positioned.visibility == 0.5)
+        #expect(positioned.maturity == 0.5)
+        let alsoPositioned = map.elements.first { $0.name == "AlsoPositioned" }!
+        #expect(alsoPositioned.visibility == 0.3)
+        #expect(alsoPositioned.maturity == 0.7)
+        // Unpositioned components are distributed
+        let unpos1 = map.elements.first { $0.name == "Unpositioned1" }!
+        let unpos2 = map.elements.first { $0.name == "Unpositioned2" }!
+        #expect(unpos1.maturity != unpos2.maturity)
+    }
+
     // MARK: - Full Map (Tea Shop Example)
 
     @Test("Parses complete Tea Shop map")
