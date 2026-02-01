@@ -58,7 +58,6 @@ public struct GridDrawing {
 
         // Evolution labels along bottom
         let labelFont = Font.system(size: 11)
-        let resolvedFont = context.resolve(Text("X").font(labelFont))
         let labelPositions: [CGFloat] = [0.125, 0.375, 0.625, 0.875]
         for (i, pos) in labelPositions.enumerated() {
             guard i < evolution.count else { break }

@@ -263,7 +263,7 @@ public struct WardleyParser: Sendable {
     ) -> ([MapElement], [ParseError]) {
         let lines = data.split(separator: "\n", omittingEmptySubsequences: false)
         var elements: [MapElement] = []
-        var errors: [ParseError] = []
+        let errors: [ParseError] = []
         var unpositionedIndices: [Int] = []
 
         for (i, line) in lines.enumerated() {
@@ -271,8 +271,7 @@ public struct WardleyParser: Sendable {
             let trimmed = element.trimmingCharacters(in: .whitespaces)
             guard trimmed.hasPrefix("\(keyword) ") else { continue }
 
-            do {
-                let (decs, decSpacing) = extractDecorators(from: element)
+            let (decs, decSpacing) = extractDecorators(from: element)
                 let effectiveSpacing = max(spacing, decSpacing)
                 let hasCoords = element.contains("[") && element.contains("]")
                 let coords = extractLocation(from: element)
@@ -301,9 +300,6 @@ public struct WardleyParser: Sendable {
                 if !hasCoords {
                     unpositionedIndices.append(elementIndex)
                 }
-            } catch {
-                errors.append(ParseError(line: i, name: "\(error)"))
-            }
         }
 
         // Distribute unpositioned components in a golden-angle spiral so they
@@ -331,14 +327,13 @@ public struct WardleyParser: Sendable {
     func extractPipelines(from data: String) -> ([Pipeline], [ParseError]) {
         let lines = data.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
         var pipelines: [Pipeline] = []
-        var errors: [ParseError] = []
+        let errors: [ParseError] = []
 
         for (i, line) in lines.enumerated() {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             guard trimmed.hasPrefix("pipeline ") else { continue }
 
-            do {
-                let name = extractName(from: line, keyword: "pipeline")
+            let name = extractName(from: line, keyword: "pipeline")
                 let pm = extractPipelineMaturity(from: line)
 
                 var pipeline = Pipeline(
@@ -394,9 +389,6 @@ public struct WardleyParser: Sendable {
                 }
 
                 pipelines.append(pipeline)
-            } catch {
-                errors.append(ParseError(line: i, name: "\(error)"))
-            }
         }
         return (pipelines, errors)
     }
@@ -406,15 +398,14 @@ public struct WardleyParser: Sendable {
     func extractEvolved(from data: String) -> ([EvolvedElement], [ParseError]) {
         let lines = data.split(separator: "\n", omittingEmptySubsequences: false)
         var evolved: [EvolvedElement] = []
-        var errors: [ParseError] = []
+        let errors: [ParseError] = []
 
         for (i, line) in lines.enumerated() {
             let element = String(line)
             let trimmed = element.trimmingCharacters(in: .whitespaces)
             guard trimmed.hasPrefix("evolve ") else { continue }
 
-            do {
-                let (decs, decSpacing) = extractDecorators(from: element)
+            let (decs, decSpacing) = extractDecorators(from: element)
                 let label = extractLabel(from: element, increaseLabelSpacing: decSpacing)
                 let nameResult = extractNameWithMaturity(from: element)
 
@@ -428,9 +419,6 @@ public struct WardleyParser: Sendable {
                     decorators: decs,
                     increaseLabelSpacing: decSpacing
                 ))
-            } catch {
-                errors.append(ParseError(line: i, name: "\(error)"))
-            }
         }
         return (evolved, errors)
     }
@@ -440,15 +428,14 @@ public struct WardleyParser: Sendable {
     func extractAnchors(from data: String) -> ([MapAnchor], [ParseError]) {
         let lines = data.split(separator: "\n", omittingEmptySubsequences: false)
         var anchors: [MapAnchor] = []
-        var errors: [ParseError] = []
+        let errors: [ParseError] = []
 
         for (i, line) in lines.enumerated() {
             let element = String(line)
             let trimmed = element.trimmingCharacters(in: .whitespaces)
             guard trimmed.hasPrefix("anchor ") else { continue }
 
-            do {
-                let name = extractName(from: element, keyword: "anchor")
+            let name = extractName(from: element, keyword: "anchor")
                 let coords = extractLocation(from: element)
                 anchors.append(MapAnchor(
                     id: "\(i + 1)",
@@ -457,9 +444,6 @@ public struct WardleyParser: Sendable {
                     visibility: coords.visibility,
                     maturity: coords.maturity
                 ))
-            } catch {
-                errors.append(ParseError(line: i, name: "\(error)"))
-            }
         }
         return (anchors, errors)
     }
@@ -494,8 +478,7 @@ public struct WardleyParser: Sendable {
             }
             guard !isNonLink else { continue }
 
-            do {
-                var start = ""
+            var start = ""
                 var end = ""
                 var flow = true
                 var future = false
@@ -597,9 +580,6 @@ public struct WardleyParser: Sendable {
                     past: past,
                     context: context
                 ))
-            } catch {
-                errors.append(ParseError(line: i))
-            }
         }
         return (links, errors)
     }
@@ -609,15 +589,14 @@ public struct WardleyParser: Sendable {
     func extractSubmaps(from data: String) -> ([MapElement], [ParseError]) {
         let lines = data.split(separator: "\n", omittingEmptySubsequences: false)
         var submaps: [MapElement] = []
-        var errors: [ParseError] = []
+        let errors: [ParseError] = []
 
         for (i, line) in lines.enumerated() {
             let element = String(line)
             let trimmed = element.trimmingCharacters(in: .whitespaces)
             guard trimmed.hasPrefix("submap ") else { continue }
 
-            do {
-                let (decs, decSpacing) = extractDecorators(from: element)
+            let (decs, decSpacing) = extractDecorators(from: element)
                 let coords = extractLocation(from: element)
                 let name = extractName(from: element, keyword: "submap")
                 let inertia = extractInertia(from: element)
@@ -639,9 +618,6 @@ public struct WardleyParser: Sendable {
                     evolveMaturity: evolve.evolveMaturity,
                     url: ref
                 ))
-            } catch {
-                errors.append(ParseError(line: i, name: "\(error)"))
-            }
         }
         return (submaps, errors)
     }
@@ -651,15 +627,14 @@ public struct WardleyParser: Sendable {
     func extractURLs(from data: String) -> ([MapURL], [ParseError]) {
         let lines = data.split(separator: "\n", omittingEmptySubsequences: false)
         var urls: [MapURL] = []
-        var errors: [ParseError] = []
+        let errors: [ParseError] = []
 
         for (i, line) in lines.enumerated() {
             let element = String(line)
             let trimmed = element.trimmingCharacters(in: .whitespaces)
             guard trimmed.hasPrefix("url ") else { continue }
 
-            do {
-                let name = extractName(from: element, keyword: "url")
+            let name = extractName(from: element, keyword: "url")
                 let path = extractURLPath(from: element)
                 urls.append(MapURL(
                     id: "\(i + 1)",
@@ -667,9 +642,6 @@ public struct WardleyParser: Sendable {
                     name: name,
                     url: path
                 ))
-            } catch {
-                errors.append(ParseError(line: i, name: "\(error)"))
-            }
         }
         return (urls, errors)
     }
