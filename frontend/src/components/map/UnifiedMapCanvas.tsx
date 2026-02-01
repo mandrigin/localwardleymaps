@@ -12,6 +12,7 @@ import MapCanvasToolbar from './MapCanvasToolbar';
 import MapGridGroup from './MapGridGroup';
 import PositionCalculator from './PositionCalculator';
 import UnifiedMapContent from './UnifiedMapContent';
+import {MARKER_FADE_MS, pointsToPath, useMarkerTool} from './useMarkerTool';
 
 interface ModernUnifiedMapCanvasProps {
     wardleyMap: UnifiedWardleyMap;
@@ -346,6 +347,23 @@ function UnifiedMapCanvas(props: ModernUnifiedMapCanvasProps) {
         }
     }, []);
 
+    const marker = useMarkerTool(value);
+
+    // Keyboard shortcut: M to toggle marker mode, Escape to deactivate
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            const t = e.target as HTMLElement;
+            if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) return;
+            if ((e.key === 'm' || e.key === 'M') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                marker.toggle();
+            } else if (e.key === 'Escape' && marker.isActive) {
+                marker.toggle();
+            }
+        };
+        document.addEventListener('keydown', handler);
+        return () => document.removeEventListener('keydown', handler);
+    }, [marker.toggle, marker.isActive]);
+
     useEffect(() => {
         if (Viewer.current) {
             const element = Viewer.current;
@@ -493,14 +511,55 @@ function UnifiedMapCanvas(props: ModernUnifiedMapCanvasProps) {
                         mapAnnotationsPresentation={mapAnnotationsPresentation}
                         mapMethods={wardleyMap.methods}
                     />
+                    {marker.strokes.length > 0 && (
+                        <g id="markerStrokes" style={{pointerEvents: 'none'}}>
+                            <style>{`
+                                @keyframes markerFade {
+                                    0%, 33% { opacity: 0.6; }
+                                    100% { opacity: 0; }
+                                }
+                            `}</style>
+                            {marker.strokes.map(stroke => (
+                                <path
+                                    key={stroke.id}
+                                    d={pointsToPath(stroke.points)}
+                                    fill="none"
+                                    stroke="#FFD600"
+                                    strokeWidth={8 / scaleFactor}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    style={stroke.permanent ? {opacity: 0.6} : {animation: `markerFade ${MARKER_FADE_MS}ms forwards`}}
+                                    onAnimationEnd={() => marker.removeStroke(stroke.id)}
+                                />
+                            ))}
+                        </g>
+                    )}
                 </svg>
             </UncontrolledReactSVGPanZoom>
+            {marker.isActive && (
+                <div
+                    ref={marker.overlayRef}
+                    style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        cursor: 'crosshair',
+                        zIndex: 999,
+                        touchAction: 'none',
+                    }}
+                    onPointerDown={marker.onPointerDown}
+                    onPointerMove={marker.onPointerMove}
+                    onPointerUp={marker.onPointerUp}
+                />
+            )}
             {showMapToolbar && (
                 <div
                     id="map-canvas-toolbar"
                     style={{
                         position: 'absolute',
-                        bottom: '20px', // Reduced from 60px to 20px, saving 40px
+                        bottom: '20px',
                         left: '20px',
                         zIndex: 1000,
                         backgroundColor: 'rgba(255, 255, 255, 0.95)',
@@ -516,19 +575,17 @@ function UnifiedMapCanvas(props: ModernUnifiedMapCanvasProps) {
                         handleChangeTool={(event, newTool) => setTool(newTool)}
                         _fitToViewer={() => {
                             if (Viewer.current) {
-                                // Use conservative margins to avoid clipping
                                 if (Viewer.current.fitSelection) {
-                                    Viewer.current.fitSelection(
-                                        -60, // Margin for value chain labels on left
-                                        -70, // Margin for title at top
-                                        mapDimensions.width + 80, // Margin for evolution labels on right
-                                        mapDimensions.height + 90, // Margin for evolution labels at bottom
-                                    );
+                                    Viewer.current.fitSelection(-60, -70, mapDimensions.width + 80, mapDimensions.height + 90);
                                 }
                             }
                         }}
                         onSpreadComponents={handleSpreadComponents}
                         onScreenshot={handleScreenshot}
+                        isMarkerActive={marker.isActive}
+                        onToggleMarker={marker.toggle}
+                        onClearMarkers={marker.clearAll}
+                        hasMarkerStrokes={marker.hasStrokes}
                     />
                 </div>
             )}
