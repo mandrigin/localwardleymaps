@@ -4,6 +4,11 @@ import WardleyRenderer
 import WardleyTheme
 import UniformTypeIdentifiers
 
+public extension Notification.Name {
+    static let exportPNG = Notification.Name("exportPNG")
+    static let copyImageToPasteboard = Notification.Name("copyImageToPasteboard")
+}
+
 /// Full-window preview of a monitored Wardley Map file.
 public struct ContentView: View {
     @Bindable var state: MapEnvironmentState
@@ -62,6 +67,7 @@ public struct ContentView: View {
             StatusBarView(
                 state: state,
                 onExport: exportPNG,
+                onCopyImage: copyImageToPasteboard,
                 onStop: {
                     state.stopMonitoring()
                     onStop()
@@ -73,6 +79,12 @@ public struct ContentView: View {
         }
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             handleDrop(providers)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .exportPNG)) { _ in
+            exportPNG()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .copyImageToPasteboard)) { _ in
+            copyImageToPasteboard()
         }
         .frame(minWidth: 600, minHeight: 400)
     }
@@ -116,6 +128,15 @@ public struct ContentView: View {
                     to: url
                 )
             }
+        }
+    }
+
+    private func copyImageToPasteboard() {
+        Task { @MainActor in
+            _ = ExportService.copyToPasteboard(
+                map: state.parsedMap,
+                theme: state.currentTheme
+            )
         }
     }
 
