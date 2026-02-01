@@ -30,7 +30,7 @@ public final class MapEnvironmentState {
     public var glitchEntries: [GlitchEntry] = []
     public var linkGlitchEntries: [LinkGlitchEntry] = []
 
-    public var isGlitching: Bool { !glitchEntries.isEmpty || !linkGlitchEntries.isEmpty || dragOverride != nil }
+    public var isGlitching: Bool { !glitchEntries.isEmpty || !linkGlitchEntries.isEmpty || dragOverride != nil || marker.needsAnimation }
 
     /// Remove entries whose animation has completed (older than 0.8s).
     public func cleanupExpiredGlitches(at date: Date) {
@@ -47,6 +47,10 @@ public final class MapEnvironmentState {
             date.timeIntervalSince(entry.startTime) >= LinkGlitchEntry.duration
         }
     }
+
+    // MARK: - Marker State
+
+    public let marker = MarkerState()
 
     // MARK: - Drag State
 

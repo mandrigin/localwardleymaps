@@ -12,8 +12,12 @@ public struct MapCanvasView: View {
     public let ghostLinks: [MapLink]
     public let dragOverride: (elementName: String, position: CGPoint)?
     public let dragPhase: Double
+    public let markerStrokes: [MarkerDrawing.StrokeSnapshot]
+    public let isMarkerActive: Bool
     public let onDragChanged: ((_ elementName: String, _ canvasPosition: CGPoint) -> Void)?
     public let onDragEnded: ((_ elementName: String, _ canvasPosition: CGPoint, _ canvasSize: CGSize) -> Void)?
+    public let onMarkerDragChanged: ((_ canvasPosition: CGPoint) -> Void)?
+    public let onMarkerDragEnded: (() -> Void)?
 
     @State private var dragElementName: String? = nil
     @State private var viewSize: CGSize = .zero
@@ -27,8 +31,12 @@ public struct MapCanvasView: View {
         ghostLinks: [MapLink] = [],
         dragOverride: (elementName: String, position: CGPoint)? = nil,
         dragPhase: Double = 0,
+        markerStrokes: [MarkerDrawing.StrokeSnapshot] = [],
+        isMarkerActive: Bool = false,
         onDragChanged: ((_ elementName: String, _ canvasPosition: CGPoint) -> Void)? = nil,
-        onDragEnded: ((_ elementName: String, _ canvasPosition: CGPoint, _ canvasSize: CGSize) -> Void)? = nil
+        onDragEnded: ((_ elementName: String, _ canvasPosition: CGPoint, _ canvasSize: CGSize) -> Void)? = nil,
+        onMarkerDragChanged: ((_ canvasPosition: CGPoint) -> Void)? = nil,
+        onMarkerDragEnded: (() -> Void)? = nil
     ) {
         self.map = map
         self.theme = theme
@@ -38,8 +46,12 @@ public struct MapCanvasView: View {
         self.ghostLinks = ghostLinks
         self.dragOverride = dragOverride
         self.dragPhase = dragPhase
+        self.markerStrokes = markerStrokes
+        self.isMarkerActive = isMarkerActive
         self.onDragChanged = onDragChanged
         self.onDragEnded = onDragEnded
+        self.onMarkerDragChanged = onMarkerDragChanged
+        self.onMarkerDragEnded = onMarkerDragEnded
     }
 
     /// Estimated label bounding rect for hit-testing (topLeading anchor).
@@ -56,6 +68,12 @@ public struct MapCanvasView: View {
     }
 
     private func handleCanvasDragChanged(_ value: DragGesture.Value, size: CGSize) {
+        // In marker mode, route all drags to marker drawing
+        if isMarkerActive {
+            onMarkerDragChanged?(value.location)
+            return
+        }
+
         let calc = PositionCalculator(mapWidth: size.width, mapHeight: size.height)
 
         // First touch: hit-test to find nearest element (dot OR label)
@@ -118,6 +136,10 @@ public struct MapCanvasView: View {
     }
 
     private func handleCanvasDragEnded(_ value: DragGesture.Value) {
+        if isMarkerActive {
+            onMarkerDragEnded?()
+            return
+        }
         if let name = dragElementName {
             onDragEnded?(name, value.location, viewSize)
         }
@@ -270,6 +292,12 @@ public struct MapCanvasView: View {
                     anchor: .top
                 )
             }
+
+            // --- Marker overlay (on top of everything) ---
+            MarkerDrawing.draw(
+                context: &context,
+                strokes: markerStrokes
+            )
         }
         .onGeometryChange(for: CGSize.self) { proxy in
             proxy.size

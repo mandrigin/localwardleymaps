@@ -76,6 +76,17 @@ struct WardleyMapsNativeApp: App {
                 }
                 .keyboardShortcut("c", modifiers: [.command, .shift])
             }
+            CommandGroup(after: .toolbar) {
+                Button("Toggle Marker") {
+                    NotificationCenter.default.post(name: .toggleMarker, object: nil)
+                }
+                .keyboardShortcut("m", modifiers: [.command, .shift])
+
+                Button("Clear All Markers") {
+                    NotificationCenter.default.post(name: .clearMarkers, object: nil)
+                }
+                .keyboardShortcut(.delete, modifiers: [.command, .shift])
+            }
         }
     }
 
