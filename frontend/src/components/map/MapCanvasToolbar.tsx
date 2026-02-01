@@ -1,8 +1,10 @@
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
+import ClearAllIcon from '@mui/icons-material/ClearAll';
 import PanIcon from '@mui/icons-material/ControlCamera';
 import FitScreenIcon from '@mui/icons-material/FitScreen';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
+import GestureIcon from '@mui/icons-material/Gesture';
 import HandIcon from '@mui/icons-material/PanToolAlt';
 import ScatterPlotIcon from '@mui/icons-material/ScatterPlot';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
@@ -21,6 +23,10 @@ interface MapCanvasToolbarProps {
     _fitToViewer: () => void;
     onScreenshot?: () => void;
     onSpreadComponents?: () => void;
+    isMarkerActive?: boolean;
+    onToggleMarker?: () => void;
+    onClearMarkers?: () => void;
+    hasMarkerStrokes?: boolean;
 }
 
 const MapCanvasToolbar: React.FC<MapCanvasToolbarProps> = ({
@@ -31,6 +37,10 @@ const MapCanvasToolbar: React.FC<MapCanvasToolbarProps> = ({
     _fitToViewer,
     onScreenshot,
     onSpreadComponents,
+    isMarkerActive,
+    onToggleMarker,
+    onClearMarkers,
+    hasMarkerStrokes,
 }) => {
     const SelectedIconButtonStyle = {color: '#90caf9'};
     const IconButtonStyle = {color: 'rgba(0, 0, 0, 0.54)'};
@@ -88,6 +98,28 @@ const MapCanvasToolbar: React.FC<MapCanvasToolbarProps> = ({
                         sx={IconButtonStyle}
                         onClick={onScreenshot}>
                         <CameraAltIcon />
+                    </IconButton>
+                </Tooltip>
+            )}
+            {onToggleMarker && (
+                <Tooltip title={t('map.toolbar.marker', 'Draw on map [M] (hold Shift for permanent)')}>
+                    <IconButton
+                        id="wm-map-marker"
+                        aria-label={t('map.toolbar.marker', 'Marker')}
+                        sx={isMarkerActive ? SelectedIconButtonStyle : IconButtonStyle}
+                        onClick={onToggleMarker}>
+                        <GestureIcon />
+                    </IconButton>
+                </Tooltip>
+            )}
+            {onClearMarkers && hasMarkerStrokes && (
+                <Tooltip title={t('map.toolbar.clearMarkers', 'Clear all markers')}>
+                    <IconButton
+                        id="wm-map-clear-markers"
+                        aria-label={t('map.toolbar.clearMarkers', 'Clear markers')}
+                        sx={IconButtonStyle}
+                        onClick={onClearMarkers}>
+                        <ClearAllIcon />
                     </IconButton>
                 </Tooltip>
             )}
