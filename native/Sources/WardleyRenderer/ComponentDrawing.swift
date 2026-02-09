@@ -16,6 +16,39 @@ public struct ComponentDrawing {
         return 3.0 * (1.0 - t) * (1.0 - t) * t * 0.8 + 3.0 * (1.0 - t) * t2 * 1.0 + t3
     }
 
+    /// Draw a rounded-rect background behind a label for readability.
+    private static func drawLabelBackground(
+        context: inout GraphicsContext,
+        at point: CGPoint,
+        name: String,
+        fontSize: CGFloat,
+        anchor: UnitPoint = .topLeading,
+        backgroundColor: Color,
+        opacity: Double
+    ) {
+        let padding: CGFloat = 3
+        let w = CGFloat(name.count) * fontSize * 0.6 + padding * 2
+        let h = fontSize * 1.4 + padding * 2
+        let x: CGFloat
+        let y: CGFloat
+        switch anchor {
+        case .topLeading:
+            x = point.x - padding
+            y = point.y - padding
+        case .bottom:
+            x = point.x - w / 2
+            y = point.y - h + padding
+        default:
+            x = point.x - padding
+            y = point.y - padding
+        }
+        let rect = CGRect(x: x, y: y, width: w, height: h)
+        context.fill(
+            Path(roundedRect: rect, cornerRadius: 4),
+            with: .color(backgroundColor.opacity(opacity))
+        )
+    }
+
     /// Draw element dots/circles only (no labels).
     public static func drawElementDots(
         context: inout GraphicsContext,
@@ -276,6 +309,15 @@ public struct ComponentDrawing {
                     x: pt.x + element.label.x + jX,
                     y: pt.y + element.label.y + jY
                 )
+                drawLabelBackground(
+                    context: &context,
+                    at: labelPt,
+                    name: element.name,
+                    fontSize: theme.component.fontSize,
+                    anchor: .topLeading,
+                    backgroundColor: theme.containerBackground,
+                    opacity: labelOpacity
+                )
                 context.draw(
                     Text(element.name)
                         .font(.system(size: theme.component.fontSize, weight: theme.component.fontWeight))
@@ -295,6 +337,15 @@ public struct ComponentDrawing {
                         x: pt.x + element.label.x + jitter,
                         y: pt.y + element.label.y
                     )
+                    drawLabelBackground(
+                        context: &context,
+                        at: labelPt,
+                        name: element.name,
+                        fontSize: theme.component.fontSize,
+                        anchor: .topLeading,
+                        backgroundColor: theme.containerBackground,
+                        opacity: 0.3
+                    )
                     context.draw(
                         Text(element.name)
                             .font(.system(size: theme.component.fontSize, weight: theme.component.fontWeight))
@@ -311,6 +362,15 @@ public struct ComponentDrawing {
                         x: pt.x + element.label.x,
                         y: pt.y + element.label.y
                     )
+                    drawLabelBackground(
+                        context: &context,
+                        at: labelPt,
+                        name: element.name,
+                        fontSize: theme.component.fontSize,
+                        anchor: .topLeading,
+                        backgroundColor: theme.containerBackground,
+                        opacity: dotOpacity
+                    )
                     context.draw(
                         Text(element.name)
                             .font(.system(size: theme.component.fontSize, weight: theme.component.fontWeight))
@@ -323,6 +383,15 @@ public struct ComponentDrawing {
                     let labelPt = CGPoint(
                         x: pt.x + element.label.x,
                         y: pt.y + element.label.y
+                    )
+                    drawLabelBackground(
+                        context: &context,
+                        at: labelPt,
+                        name: element.name,
+                        fontSize: theme.component.fontSize,
+                        anchor: .topLeading,
+                        backgroundColor: theme.containerBackground,
+                        opacity: 0.6
                     )
                     context.draw(
                         Text(element.name)
@@ -364,6 +433,15 @@ public struct ComponentDrawing {
                     )
                 }
 
+                drawLabelBackground(
+                    context: &context,
+                    at: labelPt,
+                    name: element.name,
+                    fontSize: theme.component.fontSize,
+                    anchor: .topLeading,
+                    backgroundColor: theme.containerBackground,
+                    opacity: 0.6
+                )
                 context.draw(
                     Text(element.name)
                         .font(.system(size: theme.component.fontSize, weight: fontWeight))
@@ -399,11 +477,21 @@ public struct ComponentDrawing {
     ) {
         for anchor in anchors {
             let pt = calc.point(visibility: anchor.visibility, maturity: anchor.maturity)
+            let anchorLabelPt = CGPoint(x: pt.x, y: pt.y - 12)
+            drawLabelBackground(
+                context: &context,
+                at: anchorLabelPt,
+                name: anchor.name,
+                fontSize: theme.anchor.fontSize,
+                anchor: .bottom,
+                backgroundColor: theme.containerBackground,
+                opacity: 0.6
+            )
             context.draw(
                 Text(anchor.name)
                     .font(.system(size: theme.anchor.fontSize, weight: .bold))
                     .foregroundStyle(theme.component.textColor),
-                at: CGPoint(x: pt.x, y: pt.y - 12),
+                at: anchorLabelPt,
                 anchor: .bottom
             )
         }
@@ -448,6 +536,15 @@ public struct ComponentDrawing {
             let labelPt = CGPoint(
                 x: pt.x + submap.label.x,
                 y: pt.y + submap.label.y
+            )
+            drawLabelBackground(
+                context: &context,
+                at: labelPt,
+                name: submap.name,
+                fontSize: theme.submap.fontSize,
+                anchor: .topLeading,
+                backgroundColor: theme.containerBackground,
+                opacity: 0.6
             )
             context.draw(
                 Text(submap.name)

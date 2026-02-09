@@ -84,6 +84,9 @@ public final class MapEnvironmentState {
 
     @ObservationIgnored private var autoSaveWork: DispatchWorkItem?
 
+    /// Actual canvas size from the view geometry.
+    public var canvasSize: CGSize? = nil
+
     private let parser = WardleyParser()
     private let fileMonitor = FileMonitorService()
 

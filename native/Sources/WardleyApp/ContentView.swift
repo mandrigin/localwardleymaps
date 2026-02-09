@@ -88,6 +88,11 @@ public struct ContentView: View {
                 )
             }
             .background(state.currentTheme.containerBackground)
+            .onGeometryChange(for: CGSize.self) { proxy in
+                proxy.size
+            } action: { newSize in
+                state.canvasSize = newSize
+            }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onContinuousHover { phase in
                 if state.marker.isActive {
@@ -198,6 +203,7 @@ public struct ContentView: View {
                 _ = ExportService.savePNG(
                     map: state.parsedMap,
                     theme: state.currentTheme,
+                    canvasSize: state.canvasSize,
                     to: url
                 )
             }
@@ -208,7 +214,8 @@ public struct ContentView: View {
         Task { @MainActor in
             _ = ExportService.copyToPasteboard(
                 map: state.parsedMap,
-                theme: state.currentTheme
+                theme: state.currentTheme,
+                canvasSize: state.canvasSize
             )
         }
     }
