@@ -83,6 +83,7 @@ public final class MapEnvironmentState {
     }
 
     @ObservationIgnored private var autoSaveWork: DispatchWorkItem?
+    @ObservationIgnored private var autoSaveGeneration: UInt64 = 0
 
     /// Actual canvas size from the view geometry.
     public var canvasSize: CGSize? = nil
@@ -107,6 +108,7 @@ public final class MapEnvironmentState {
 
     /// Open and start monitoring a file.
     public func openFile(_ url: URL) {
+        cancelAutoSave()
         fileURL = url
         reloadFromDisk()
         startMonitoring()
@@ -125,17 +127,24 @@ public final class MapEnvironmentState {
     }
 
     /// Write the current mapText to disk and clear the unsaved flag.
-    public func saveToDisk() {
+    @discardableResult
+    public func saveToDisk() -> Bool {
         guard let url = fileURL,
-              let data = mapText.data(using: .utf8) else { return }
+              let data = mapText.data(using: .utf8) else { return false }
         let accessing = url.startAccessingSecurityScopedResource()
         defer { if accessing { url.stopAccessingSecurityScopedResource() } }
-        try? data.write(to: url, options: .atomic)
+        do {
+            try data.write(to: url, options: .atomic)
+        } catch {
+            return false
+        }
         hasUnsavedChanges = false
+        return true
     }
 
     /// Stop monitoring the current file.
     public func stopMonitoring() {
+        cancelAutoSave()
         fileMonitor.stop()
     }
 
@@ -222,10 +231,12 @@ public final class MapEnvironmentState {
     }
 
     private func scheduleAutoSave() {
-        autoSaveWork?.cancel()
+        cancelAutoSave()
+        let generation = autoSaveGeneration
         let work = DispatchWorkItem { [weak self] in
             Task { @MainActor [weak self] in
-                guard let self, self.hasUnsavedChanges else { return }
+                guard let self, self.hasUnsavedChanges,
+                      self.autoSaveGeneration == generation else { return }
                 self.saveToDisk()
             }
         }
@@ -234,6 +245,7 @@ public final class MapEnvironmentState {
     }
 
     private func cancelAutoSave() {
+        autoSaveGeneration &+= 1
         autoSaveWork?.cancel()
         autoSaveWork = nil
     }

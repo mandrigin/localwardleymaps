@@ -5,16 +5,16 @@ import UniformTypeIdentifiers
 public struct WelcomeView: View {
     @Bindable var state: MapEnvironmentState
     var recentFiles: RecentFilesService
-    var onFileOpened: (URL) -> Void
+    var onFilesOpened: ([URL]) -> Void
 
     public init(
         state: MapEnvironmentState,
         recentFiles: RecentFilesService,
-        onFileOpened: @escaping (URL) -> Void
+        onFilesOpened: @escaping ([URL]) -> Void
     ) {
         self.state = state
         self.recentFiles = recentFiles
-        self.onFileOpened = onFileOpened
+        self.onFilesOpened = onFilesOpened
     }
 
     public var body: some View {
@@ -51,7 +51,7 @@ public struct WelcomeView: View {
 
                     ForEach(recentFiles.recentFiles, id: \.self) { url in
                         Button {
-                            onFileOpened(url)
+                            onFilesOpened([url])
                         } label: {
                             HStack {
                                 Image(systemName: "doc.text")
@@ -84,11 +84,11 @@ public struct WelcomeView: View {
     private func openFile() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.wardleyMap, .plainText]
-        panel.allowsMultipleSelection = false
+        panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
         panel.begin { response in
-            guard response == .OK, let url = panel.url else { return }
-            onFileOpened(url)
+            guard response == .OK else { return }
+            onFilesOpened(panel.urls)
         }
     }
 }

@@ -6,6 +6,8 @@ cd "$(dirname "$0")"
 APP_NAME="WardleyMapsApp"
 BUNDLE_ID="com.wardleymaps.native"
 MODE="${1:-debug}"
+if [ "$#" -gt 0 ]; then shift; fi
+VERSION="$(cat VERSION)"
 
 bundle_app() {
     local bin_path="$1"
@@ -42,9 +44,9 @@ bundle_app() {
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
+    <string>${VERSION}</string>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>${VERSION}</string>
     <key>LSMinimumSystemVersion</key>
     <string>15.0</string>
     <key>NSHighResolutionCapable</key>
@@ -95,6 +97,14 @@ PLIST
 }
 
 case "$MODE" in
+    bundle)
+        # Package a binary built separately (for example, a universal binary).
+        if [ "$#" -ne 1 ] || [ ! -f "$1/$APP_NAME" ]; then
+            echo "Usage: $0 bundle /absolute/path/to/binary-directory" >&2
+            exit 1
+        fi
+        bundle_app "$1"
+        ;;
     debug)
         echo "Building debug..."
         swift build
@@ -120,14 +130,14 @@ case "$MODE" in
         swift build
         bin_path="$(swift build --show-bin-path)"
         app_path="$(bundle_app "$bin_path")"
-        open "$app_path"
+        open -a "$app_path" "$@"
         ;;
     clean)
         echo "Cleaning..."
         swift package clean
         ;;
     *)
-        echo "Usage: $0 {debug|release|test|run|clean}"
+        echo "Usage: $0 {debug|release|test|run|clean|bundle} [map.owm ...|binary-directory]"
         exit 1
         ;;
 esac

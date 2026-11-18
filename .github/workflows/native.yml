@@ -1,0 +1,21 @@
+name: Native macOS
+
+on:
+  push:
+    branches: [main]
+    paths: ['native/**', '.github/workflows/native.yml']
+  pull_request:
+    paths: ['native/**', '.github/workflows/native.yml']
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test native application
+        working-directory: native
+        run: swift test
+      - name: Build application bundle
+        working-directory: native
+        run: ./build.sh release

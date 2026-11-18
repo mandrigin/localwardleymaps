@@ -5,7 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.0] - 2026-11-18 (native macOS)
+
+### Added
+
+- Independent windows for each map, including multiple-file Open and drag-and-drop.
+- Finder and command-line file opening while the app is running: `open -a WardleyMapsApp first.owm second.owm`.
+- New Window and Close Window commands, document filenames in window titles, and focus of already-open files.
+- Native application regression tests and macOS CI.
+
+### Fixed
+
+- Save, export, copy and marker commands now target the active map only.
+- Closing or stopping a map cancels its file watcher and pending auto-save.
+- Failed saves retain unsaved changes; closing prompts before discarding edits.
+
+## Earlier web and Electron changes
 
 ### Added
 

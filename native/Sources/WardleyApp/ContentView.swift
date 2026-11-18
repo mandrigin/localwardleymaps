@@ -16,15 +16,18 @@ public struct ContentView: View {
     @Bindable var state: MapEnvironmentState
     var recentFiles: RecentFilesService
     var onStop: () -> Void
+    var onOpenFiles: ([URL]) -> Void
 
     public init(
         state: MapEnvironmentState,
         recentFiles: RecentFilesService,
-        onStop: @escaping () -> Void
+        onStop: @escaping () -> Void,
+        onOpenFiles: @escaping ([URL]) -> Void
     ) {
         self.state = state
         self.recentFiles = recentFiles
         self.onStop = onStop
+        self.onOpenFiles = onOpenFiles
     }
 
     public var body: some View {
@@ -110,10 +113,7 @@ public struct ContentView: View {
                 state: state,
                 onExport: exportPNG,
                 onCopyImage: copyImageToPasteboard,
-                onStop: {
-                    state.stopMonitoring()
-                    onStop()
-                },
+                onStop: onStop,
                 onReload: {
                     state.reloadFromDisk()
                 }
@@ -122,16 +122,16 @@ public struct ContentView: View {
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             handleDrop(providers)
         }
-        .onReceive(NotificationCenter.default.publisher(for: .exportPNG)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .exportPNG, object: state)) { _ in
             exportPNG()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .copyImageToPasteboard)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .copyImageToPasteboard, object: state)) { _ in
             copyImageToPasteboard()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .toggleMarker)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .toggleMarker, object: state)) { _ in
             state.marker.isActive.toggle()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .clearMarkers)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .clearMarkers, object: state)) { _ in
             state.marker.clearAll()
         }
         .onReceive(Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()) { now in
@@ -221,13 +221,14 @@ public struct ContentView: View {
     }
 
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
-        guard let provider = providers.first else { return false }
-        provider.loadItem(forTypeIdentifier: "public.file-url", options: nil) { data, _ in
-            guard let data = data as? Data,
-                  let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
-            Task { @MainActor in
-                recentFiles.add(url)
-                state.openFile(url)
+        guard !providers.isEmpty else { return false }
+        for provider in providers {
+            provider.loadItem(forTypeIdentifier: "public.file-url", options: nil) { data, _ in
+                guard let data = data as? Data,
+                      let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
+                Task { @MainActor in
+                    onOpenFiles([url])
+                }
             }
         }
         return true

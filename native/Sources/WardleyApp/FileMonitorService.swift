@@ -12,20 +12,25 @@ public final class FileMonitorService: @unchecked Sendable {
     private var _fileDescriptor: Int32 = -1
     private var _watchedURL: URL?
     private var _onFileChanged: (@Sendable () -> Void)?
+    private var _generation: UInt64 = 0
 
     public init() {}
+
+    deinit { stop() }
 
     public func watch(url: URL, onChange: @escaping @Sendable () -> Void) {
         stop()
         lock.lock()
         _watchedURL = url
         _onFileChanged = onChange
+        let generation = _generation
         lock.unlock()
-        startWatching(url: url)
+        startWatching(url: url, generation: generation)
     }
 
     public func stop() {
         lock.lock()
+        _generation &+= 1
         _source?.cancel()  // cancel handler closes fd
         _source = nil
         _fileDescriptor = -1
@@ -34,18 +39,17 @@ public final class FileMonitorService: @unchecked Sendable {
         lock.unlock()
     }
 
-    private func startWatching(url: URL) {
+    private func startWatching(url: URL, generation: UInt64) {
+        lock.lock()
+        let stillWatching = _watchedURL == url && _generation == generation
+        lock.unlock()
+        guard stillWatching else { return }
         let fd = open(url.path, O_EVTONLY)
         guard fd >= 0 else {
             // File might not exist yet (atomic rename in progress), retry
             queue.asyncAfter(deadline: .now() + 0.3) { [weak self] in
                 guard let self else { return }
-                self.lock.lock()
-                let stillWatching = self._watchedURL == url
-                self.lock.unlock()
-                if stillWatching {
-                    self.startWatching(url: url)
-                }
+                self.startWatching(url: url, generation: generation)
             }
             return
         }
@@ -59,6 +63,10 @@ public final class FileMonitorService: @unchecked Sendable {
         src.setEventHandler { [weak self] in
             guard let self else { return }
             self.lock.lock()
+            guard self._generation == generation, self._watchedURL == url else {
+                self.lock.unlock()
+                return
+            }
             let callback = self._onFileChanged
             let watchedURL = self._watchedURL
             // Tear down old source — fd closed by cancel handler
@@ -73,7 +81,7 @@ public final class FileMonitorService: @unchecked Sendable {
             // Re-watch (editors do atomic save: write tmp + rename)
             if let url = watchedURL {
                 self.queue.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                    self?.startWatching(url: url)
+                    self?.startWatching(url: url, generation: generation)
                 }
             }
         }
@@ -83,6 +91,12 @@ public final class FileMonitorService: @unchecked Sendable {
         }
 
         lock.lock()
+        guard _generation == generation, _watchedURL == url else {
+            lock.unlock()
+            src.cancel()
+            src.resume()
+            return
+        }
         _source = src
         _fileDescriptor = fd
         lock.unlock()

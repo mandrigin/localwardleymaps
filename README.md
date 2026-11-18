@@ -38,6 +38,36 @@ To run all tests.
 
     yarn test
 
+### Native macOS App
+
+The native SwiftUI/AppKit app requires macOS 15 or later. Each map opens in its
+own window with an independent file watcher, edits, markers and export actions.
+Opening a file that is already displayed brings its window forward.
+
+Build and test with Swift 6:
+
+```sh
+cd native
+./build.sh test
+./build.sh release
+```
+
+Copy the resulting `WardleyMapsApp.app` from the build output into `/Applications`.
+Open one or more maps from the command line, including while the app is running:
+
+```sh
+open -a WardleyMapsApp "/path/to/first map.owm" "/path/to/second.owm"
+```
+
+Use ordinary file arguments to `open`, without `--args` or `-n`. This delivers
+files to the running application and opens a window for each distinct map.
+`File > Open` also supports selecting multiple files; `Cmd+N` creates a new
+welcome window. `Cmd+S`, export and marker commands act on the selected map.
+
+For development, `./build.sh run /absolute/path/to/first.owm /absolute/path/to/second.owm`
+builds and opens both files. A fresh direct executable launch also accepts
+multiple file paths or `file://` URLs.
+
 ### Desktop App (Electron)
 
 Run as a desktop application with native file system access:

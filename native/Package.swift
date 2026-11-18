@@ -59,6 +59,11 @@ let package = Package(
 
         // Tests
         .testTarget(
+            name: "WardleyAppTests",
+            dependencies: ["WardleyApp"],
+            path: "Tests/WardleyAppTests"
+        ),
+        .testTarget(
             name: "WardleyParserTests",
             dependencies: ["WardleyParser", "WardleyModel"],
             path: "Tests/WardleyParserTests"
